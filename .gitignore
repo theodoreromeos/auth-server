@@ -1,0 +1,93 @@
+HELP.md
+### Java ###
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.javadoc
+*.hprof
+*.stackdump
+
+# Build output
+target/
+bin/
+build/
+
+# Maven
+.mvn/
+!/.mvn/wrapper/maven-wrapper.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Logs
+logs/
+*.log
+*.out
+
+# Test reports
+test-output/
+surefire-reports/
+failsafe-reports/
+
+# Spring Boot devtools
+.spring-boot-devtools.properties
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+out/
+
+# Eclipse
+.project
+.classpath
+.cproject
+.settings/
+.loadpath
+
+# VS Code
+.vscode/
+
+# Operating System
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Vim/Emacs
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Docker
+**/Dockerfile.*
+**/Dockerfile
+**/docker-compose*.yml
+docker-compose.override.yml
+.docker/
+.dockerignore
+*.log
+
+# Optional: Docker build artifacts
+*.tar
+*.img
+*.oci
+
+# Coverage / analysis
+.sonar/
+.coverage/
+jacoco.exec
+.cache/

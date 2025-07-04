@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="1" author="theodoreromeos">
+        <sql>
+            --
+            -- 1. user_auth_info
+            --
+            CREATE TABLE user_auth_info
+            (
+                id                      VARCHAR(26)  NOT NULL PRIMARY KEY,
+                email                   VARCHAR(100) NOT NULL,
+                mobile_number           VARCHAR(20)  NOT NULL,
+                org_registration_number VARCHAR(255),
+                password                VARCHAR(500) NOT NULL,
+                last_login              TIMESTAMPTZ,
+                email_verified          BOOLEAN      NOT NULL DEFAULT FALSE,
+                mfa_enabled             BOOLEAN      NOT NULL DEFAULT FALSE,
+                date_created            TIMESTAMPTZ  NOT NULL,
+                date_updated            TIMESTAMPTZ  NOT NULL
+            );
+
+            --
+            -- 2. role
+            --
+            CREATE TABLE role
+            (
+                role_type    VARCHAR(255) NOT NULL PRIMARY KEY,
+                description  TEXT         NOT NULL,
+                active       BOOLEAN      NOT NULL DEFAULT TRUE,
+                date_created TIMESTAMPTZ  NOT NULL,
+                date_updated TIMESTAMPTZ  NOT NULL
+            );
+
+            --
+            -- 3. authority
+            --
+            CREATE TABLE authority
+            (
+                type         VARCHAR(255) NOT NULL PRIMARY KEY,
+                description  TEXT         NOT NULL,
+                active       BOOLEAN      NOT NULL DEFAULT TRUE,
+                date_created TIMESTAMPTZ  NOT NULL,
+                date_updated TIMESTAMPTZ  NOT NULL
+            );
+
+            --
+            -- 4. role_authority
+            --
+            CREATE TABLE role_authority
+            (
+                id             BIGSERIAL    NOT NULL PRIMARY KEY,
+                role_role_type VARCHAR(255) NOT NULL REFERENCES role (role_type),
+                authority_type VARCHAR(255) NOT NULL REFERENCES authority (type),
+                date_created   TIMESTAMPTZ  NOT NULL,
+                date_updated   TIMESTAMPTZ  NOT NULL
+            );
+
+            --
+            -- 5. user_roles
+            --
+            CREATE TABLE user_roles
+            (
+                id           BIGSERIAL    NOT NULL PRIMARY KEY,
+                user_id      VARCHAR(26)  NOT NULL REFERENCES user_auth_info (id),
+                role_id      VARCHAR(255) NOT NULL REFERENCES role (role_type),
+                active       BOOLEAN      NOT NULL DEFAULT TRUE,
+                date_created TIMESTAMPTZ  NOT NULL,
+                date_updated TIMESTAMPTZ  NOT NULL,
+                CONSTRAINT uq_user_roles_user_role UNIQUE (user_id, role_id)
+            );
+        </sql>
+        <rollback>
+            <!-- drop in reverse dependency order -->
+            <sql>DROP TABLE IF EXISTS user_roles;</sql>
+            <sql>DROP TABLE IF EXISTS role_authority;</sql>
+            <sql>DROP TABLE IF EXISTS authority;</sql>
+            <sql>DROP TABLE IF EXISTS role;</sql>
+            <sql>DROP TABLE IF EXISTS user_auth_info;</sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
