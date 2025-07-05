@@ -39,7 +39,6 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.password.HaveIBeenPwnedRestApiPasswordChecker;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 
 import javax.crypto.SecretKey;
@@ -96,7 +95,10 @@ public class ProjectSecurityConfig {
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder) throws Exception {
         http
                 .csrf(csrfConfig -> csrfConfig
-                        .ignoringRequestMatchers(new AntPathRequestMatcher("/user/**")))
+                        .ignoringRequestMatchers(request ->
+                                request.getServletPath().startsWith("/user/")
+                        )
+                )
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/user/register/**").hasAuthority("SCOPE_INTERNAL_SERVICE")
                         .requestMatchers(HttpMethod.PUT, "/user/confirm").hasAuthority("SCOPE_ADMIN")
