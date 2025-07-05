@@ -1,15 +1,19 @@
 package com.theodore.auth.server.services;
 
 import com.theodore.queue.common.authserver.CredentialsRollbackEventDto;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 @Component
 public class UserManagementListener {
 
-    private final UserAuthService userAuthService;
+    private static final Logger LOGGER = LoggerFactory.getLogger(UserManagementListener.class);
 
-    public UserManagementListener(UserAuthService userAuthService) {
+    private final UserAuthServiceImpl userAuthService;
+
+    public UserManagementListener(UserAuthServiceImpl userAuthService) {
         this.userAuthService = userAuthService;
     }
 
