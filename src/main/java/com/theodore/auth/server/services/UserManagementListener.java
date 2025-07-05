@@ -11,19 +11,19 @@ public class UserManagementListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UserManagementListener.class);
 
-    private final UserAuthServiceImpl userAuthService;
+    private final UserAuthService userAuthService;
 
-    public UserManagementListener(UserAuthServiceImpl userAuthService) {
+    public UserManagementListener(UserAuthService userAuthService) {
         this.userAuthService = userAuthService;
     }
 
     @RabbitListener(queues = "${rabbitmq.queue}")
     public void receive(CredentialsRollbackEventDto message) {
-        System.out.println("RECEIVED ROLLBACK REQUEST");
+        LOGGER.trace("Received rollback request");
         try {
             userAuthService.rollbackRegistration(message.userId());
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            LOGGER.error("Error: {}", e.getMessage());
             throw new RuntimeException("Error: " + e.getMessage());//todo : souloupoma
         }
 
