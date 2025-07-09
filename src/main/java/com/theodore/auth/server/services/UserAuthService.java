@@ -1,16 +1,14 @@
 package com.theodore.auth.server.services;
 
-import com.theodore.racingmodel.models.AuthUserCreatedResponseDto;
-import com.theodore.racingmodel.models.CreateNewOrganizationAuthUserRequestDto;
-import com.theodore.racingmodel.models.CreateNewSimpleAuthUserRequestDto;
+import com.theodore.user.*;
 
 public interface UserAuthService {
 
-    AuthUserCreatedResponseDto registerNewSimpleUser(CreateNewSimpleAuthUserRequestDto newUserRequestDto);
+    AuthUserCreatedResponse registerNewSimpleUser(CreateNewSimpleAuthUserRequest newUserRequest);
 
-    AuthUserCreatedResponseDto registerNewOrganizationUser(CreateNewOrganizationAuthUserRequestDto userRequestDto);
+    AuthUserCreatedResponse registerNewOrganizationUser(CreateNewOrganizationAuthUserRequest newUserRequest);
 
-    void confirmRegistration(String userId);
+    UserConfirmationResponse confirmRegistration(ConfirmUserAccountRequest request);
 
     void rollbackRegistration(String userId);
 

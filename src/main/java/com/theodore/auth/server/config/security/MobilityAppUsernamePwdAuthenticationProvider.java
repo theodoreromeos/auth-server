@@ -1,4 +1,4 @@
-package com.theodore.auth.server.config;
+package com.theodore.auth.server.config.security;
 
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;

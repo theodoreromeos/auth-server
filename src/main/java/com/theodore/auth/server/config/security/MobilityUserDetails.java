@@ -1,4 +1,4 @@
-package com.theodore.auth.server.config;
+package com.theodore.auth.server.config.security;
 
 import com.theodore.auth.server.entities.UserAuthInfo;
 import org.springframework.security.core.GrantedAuthority;

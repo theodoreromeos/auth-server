@@ -28,6 +28,8 @@
     </scm>
     <properties>
         <java.version>21</java.version>
+        <grpc.spring.boot.version>3.1.0.RELEASE</grpc.spring.boot.version>
+        <grpc.testing.version>1.73.0</grpc.testing.version>
     </properties>
     <dependencies>
 
@@ -72,6 +74,11 @@
             <artifactId>racing-model</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>com.theodore</groupId>
+            <artifactId>proto-common</artifactId>
+            <version>0.0.1</version>
+        </dependency>
 
         <!--   RABBITMQ     -->
         <dependency>
@@ -102,6 +109,25 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!--   GRPC     -->
+        <dependency>
+            <groupId>net.devh</groupId>
+            <artifactId>grpc-server-spring-boot-starter</artifactId>
+            <version>${grpc.spring.boot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.devh</groupId>
+            <artifactId>grpc-client-spring-boot-starter</artifactId>
+            <version>${grpc.spring.boot.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-testing</artifactId>
+            <version>${grpc.testing.version}</version>
+            <scope>test</scope>
         </dependency>
 
 

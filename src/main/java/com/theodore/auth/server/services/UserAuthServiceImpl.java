@@ -12,6 +12,7 @@ import com.theodore.racingmodel.exceptions.UserAlreadyExistsException;
 import com.theodore.racingmodel.models.AuthUserCreatedResponseDto;
 import com.theodore.racingmodel.models.CreateNewOrganizationAuthUserRequestDto;
 import com.theodore.racingmodel.models.CreateNewSimpleAuthUserRequestDto;
+import com.theodore.user.*;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,48 +44,52 @@ public class UserAuthServiceImpl implements UserAuthService {
 
     @Transactional
     @Override
-    public AuthUserCreatedResponseDto registerNewSimpleUser(CreateNewSimpleAuthUserRequestDto newUserRequestDto) {
+    public AuthUserCreatedResponse registerNewSimpleUser(CreateNewSimpleAuthUserRequest newUserRequest) {
 
-        LOGGER.info("Registration process for user : {} ", newUserRequestDto.email());
+        LOGGER.info("Registration process for user : {} ", newUserRequest.getEmail());
 
-        if (userAuthInfoRepository.existsByEmailOrMobileNumber(newUserRequestDto.email(), newUserRequestDto.mobileNumber())) {
-            throw new UserAlreadyExistsException(newUserRequestDto.email());
+        if (userAuthInfoRepository.existsByEmailOrMobileNumber(newUserRequest.getEmail(), newUserRequest.getMobileNumber())) {
+            throw new UserAlreadyExistsException(newUserRequest.getEmail());
         }
 
-        UserAuthInfo newUser = new UserAuthInfo(newUserRequestDto.email(),
-                newUserRequestDto.mobileNumber(),
-                passwordEncoder.encode(newUserRequestDto.password()));
+        UserAuthInfo newUser = new UserAuthInfo(newUserRequest.getEmail(),
+                newUserRequest.getMobileNumber(),
+                passwordEncoder.encode(newUserRequest.getPassword()));
 
         UserAuthInfo savedUser = userAuthInfoRepository.save(newUser);
 
-        return new AuthUserCreatedResponseDto(savedUser.getId());
+        return AuthUserCreatedResponse.newBuilder()
+                .setUserId(savedUser.getId())
+                .build();
     }
 
     @Transactional
     @Override
-    public AuthUserCreatedResponseDto registerNewOrganizationUser(CreateNewOrganizationAuthUserRequestDto userRequestDto) {
+    public AuthUserCreatedResponse registerNewOrganizationUser(CreateNewOrganizationAuthUserRequest newUserRequest) {
 
-        LOGGER.info("Registration process for user : {} working for organization : {}", userRequestDto.email(), userRequestDto.organizationRegNumber());
+        LOGGER.info("Registration process for user : {} working for organization : {}", newUserRequest.getEmail(), newUserRequest.getOrganizationRegNumber());
 
-        if (userAuthInfoRepository.existsByEmailOrMobileNumber(userRequestDto.email(), userRequestDto.mobileNumber())) {
-            throw new UserAlreadyExistsException(userRequestDto.email());
+        if (userAuthInfoRepository.existsByEmailOrMobileNumber(newUserRequest.getEmail(), newUserRequest.getMobileNumber())) {
+            throw new UserAlreadyExistsException(newUserRequest.getEmail());
         }
 
-
-        UserAuthInfo newUser = new UserAuthInfo(userRequestDto.email(),
-                userRequestDto.mobileNumber(),
-                userRequestDto.organizationRegNumber(),
-                passwordEncoder.encode(userRequestDto.password()));
+        UserAuthInfo newUser = new UserAuthInfo(newUserRequest.getEmail(),
+                newUserRequest.getMobileNumber(),
+                newUserRequest.getOrganizationRegNumber(),
+                passwordEncoder.encode(newUserRequest.getPassword()));
 
         UserAuthInfo savedUser = userAuthInfoRepository.save(newUser);
 
-        return new AuthUserCreatedResponseDto(savedUser.getId());
+        return AuthUserCreatedResponse.newBuilder()
+                .setUserId(savedUser.getId())
+                .build();
     }
 
     @Transactional
     @Override
-    public void confirmRegistration(String userId) {
-        UserAuthInfo user = userAuthInfoRepository.getById(userId)
+    public UserConfirmationResponse confirmRegistration(ConfirmUserAccountRequest request) {
+
+        UserAuthInfo user = userAuthInfoRepository.getById(request.getUserId())
                 .orElseThrow(() -> new NotFoundException("user not found"));//todo change the exception
 
         user.setEmailVerified(true);
@@ -101,6 +106,8 @@ public class UserAuthServiceImpl implements UserAuthService {
         user.setUserRoles(userRolesSet);
 
         userAuthInfoRepository.save(user);
+
+        return UserConfirmationResponse.newBuilder().setConfirmationStatus(ConfirmationStatus.CONFIRMED).build();
     }
 
     @Transactional
