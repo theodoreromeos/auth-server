@@ -1,4 +1,4 @@
-package com.theodore.auth.server.config.security;
+package com.theodore.auth.server.config;
 
 import com.theodore.queue.common.authserver.CredentialsQueueConfig;
 import com.theodore.queue.common.config.CommonRabbitMqConfigs;
