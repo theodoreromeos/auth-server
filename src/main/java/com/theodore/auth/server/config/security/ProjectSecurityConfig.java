@@ -5,13 +5,17 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.theodore.racingmodel.entities.modeltypes.RoleType;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import net.devh.boot.grpc.server.serverfactory.GrpcServerConfigurer;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.HttpMethod;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.password.CompromisedPasswordChecker;
 import org.springframework.security.config.Customizer;
@@ -42,22 +46,30 @@ import org.springframework.security.web.authentication.password.HaveIBeenPwnedRe
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 
 import javax.crypto.SecretKey;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
+@EnableConfigurationProperties(RsaKeyProperties.class)
 public class ProjectSecurityConfig {
+
+    private final ResourceLoader resourceLoader;
+    private final RsaKeyProperties rsaKeyProperties;
 
     private static final String USERNAME = "username";
     private static final String ROLES = "roles";
     private static final String ORGANIZATION = "organization";
     private static final String AUTHORITIES = "authorities";
+
+    public ProjectSecurityConfig(RsaKeyProperties rsaKeyProperties, ResourceLoader resourceLoader) {
+        this.rsaKeyProperties = rsaKeyProperties;
+        this.resourceLoader = resourceLoader;
+    }
 
 
     @Bean
@@ -71,7 +83,7 @@ public class ProjectSecurityConfig {
                 .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
                 .with(authorizationServerConfigurer, authorizationServer ->
                         authorizationServer
-                                .oidc(Customizer.withDefaults())    // Enable OpenID Connect 1.0
+                                .oidc(Customizer.withDefaults()) // OpenID Connect 1
                 )
                 .authorizeHttpRequests(authorize ->
                         authorize
@@ -92,23 +104,10 @@ public class ProjectSecurityConfig {
 
     @Bean
     @Order(2)
-    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder) throws Exception {
-        http
-                .csrf(csrfConfig -> csrfConfig
-                        .ignoringRequestMatchers(request ->
-                                request.getServletPath().startsWith("/user/")
-                        )
-                )
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.POST, "/user/register/**").hasAuthority("SCOPE_INTERNAL_SERVICE")
-                        .requestMatchers(HttpMethod.PUT, "/user/confirm").hasAuthority("SCOPE_ADMIN")
-                        .anyRequest().authenticated()
-                )
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.decoder(jwtDecoder))
-                );
-
-        return http.build();
+    public GrpcServerConfigurer secureGrpcServer(JwtServerInterceptor interceptor) {
+        return serverBuilder -> serverBuilder
+                .intercept(interceptor)
+                .executor(Executors.newVirtualThreadPerTaskExecutor());
     }
 
     @Bean
@@ -123,7 +122,6 @@ public class ProjectSecurityConfig {
                         scopeConfig.addAll(List.of(OidcScopes.OPENID, "INTERNAL_SERVICE")))
                 .tokenSettings(TokenSettings.builder().accessTokenTimeToLive(Duration.ofMinutes(10))
                         .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED).build())
-                //.clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
                 .build();
 
         ///////////////////////////
@@ -152,27 +150,19 @@ public class ProjectSecurityConfig {
 
     @Bean
     public JWKSource<SecurityContext> jwkSource() {
-        KeyPair keyPair = generateRsaKey();
-        RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
-        RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+
+        Resource privateKeyRes = resourceLoader.getResource(rsaKeyProperties.privateKeyPath());
+        Resource publicKeyRes = resourceLoader.getResource(rsaKeyProperties.publicKeyPath());
+
+        RSAPrivateKey privateKey = RsaKeyUtils.loadPrivateKey(privateKeyRes);
+        RSAPublicKey publicKey = RsaKeyUtils.loadPublicKey(publicKeyRes);
+
         RSAKey rsaKey = new RSAKey.Builder(publicKey)
                 .privateKey(privateKey)
-                .keyID(UUID.randomUUID().toString())
+                .keyID(rsaKeyProperties.keyId())
                 .build();
         JWKSet jwkSet = new JWKSet(rsaKey);
         return new ImmutableJWKSet<>(jwkSet);
-    }
-
-    private static KeyPair generateRsaKey() {
-        KeyPair keyPair;
-        try {
-            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-            keyPairGenerator.initialize(2048);
-            keyPair = keyPairGenerator.generateKeyPair();
-        } catch (Exception ex) {
-            throw new IllegalStateException(ex);
-        }
-        return keyPair;
     }
 
     @Bean
@@ -258,44 +248,13 @@ public class ProjectSecurityConfig {
         return ttl;
     }
 
+    @Bean
+    public Map<String, RoleType> grpcMethodPolicies() {
+        return GrpcSecurity.configure()
+                .requireRole("user.AuthServerNewUserRegistration/CreateSimpleUser", RoleType.INTERNAL_SERVICE)
+                .requireRole("user.AuthServerNewUserRegistration/CreateOrganizationUser", RoleType.INTERNAL_SERVICE)
+                .requireRole("user.AuthServerNewUserRegistration/ConfirmUserAccount", RoleType.INTERNAL_SERVICE)
+                .build();
+    }
+
 }
-
-
-//context.getClaims().claims(claims -> {
-//        if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
-//String clientId = context.getPrincipal().getName();
-//                    claims.put("username", clientId);
-//                    claims.put("organization", List.of("SYSTEM"));
-//
-//Object scopeClaim = context.getClaims().build().getClaim("scope");
-//
-//Set<String> scopes = switch (scopeClaim) {
-//    case String scopeStr -> Set.of(scopeStr.split(" "));
-//    case Collection<?> scopeList -> scopeList.stream()
-//            .filter(Objects::nonNull)
-//            .map(Object::toString)
-//            .collect(Collectors.toUnmodifiableSet());
-//    default -> Set.of();
-//};
-//
-//                    claims.put("roles", scopes);
-//                    claims.put("authorities", scopes);
-//
-//                } else if (AuthorizationGrantType.AUTHORIZATION_CODE.equals(context.getAuthorizationGrantType())) {
-//MobilityUserDetails principal = context.getPrincipal();
-//
-//                    context.getClaims().claim("username", principal.getEmail());
-//        if (principal.getOrganizationRegNumber() != null) {
-//        context.getClaims().claim("organization", principal.getOrganizationRegNumber());
-//        }
-//        context.getClaims().claim("roles", principal.getRoles());
-//
-//        principal.getAuthorities().forEach(authority -> {//todo remove it
-//        System.out.println(">>>>>>>>> " + authority.getAuthority());
-//        });
-//
-//        context.getClaims().claim("authorities", principal.getAuthorities().stream()
-//                            .map(GrantedAuthority::getAuthority)
-//                            .toList());
-//        }
-//        });
