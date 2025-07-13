@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 @Entity
 @Table(
         name = "user_roles",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "role_id"})
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "role_type"})
 )
 public class UserRoles extends AuditableUpdateEntity {
 
@@ -20,7 +20,7 @@ public class UserRoles extends AuditableUpdateEntity {
     private UserAuthInfo user;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "role_id", nullable = false)
+    @JoinColumn(name = "role_type", nullable = false)
     private Role role;
 
     @Column(name = "active")

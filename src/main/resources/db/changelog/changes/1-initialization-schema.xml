@@ -54,7 +54,7 @@
             CREATE TABLE role_authority
             (
                 id             BIGSERIAL    NOT NULL PRIMARY KEY,
-                role_role_type VARCHAR(255) NOT NULL REFERENCES role (role_type),
+                role_type      VARCHAR(255) NOT NULL REFERENCES role (role_type),
                 authority_type VARCHAR(255) NOT NULL REFERENCES authority (type),
                 date_created   TIMESTAMPTZ  NOT NULL,
                 date_updated   TIMESTAMPTZ  NOT NULL
@@ -67,11 +67,11 @@
             (
                 id           BIGSERIAL    NOT NULL PRIMARY KEY,
                 user_id      VARCHAR(26)  NOT NULL REFERENCES user_auth_info (id),
-                role_id      VARCHAR(255) NOT NULL REFERENCES role (role_type),
+                role_type    VARCHAR(255) NOT NULL REFERENCES role (role_type),
                 active       BOOLEAN      NOT NULL DEFAULT TRUE,
                 date_created TIMESTAMPTZ  NOT NULL,
                 date_updated TIMESTAMPTZ  NOT NULL,
-                CONSTRAINT uq_user_roles_user_role UNIQUE (user_id, role_id)
+                CONSTRAINT uq_user_roles_user_role UNIQUE (user_id, role_type)
             );
         </sql>
         <rollback>
