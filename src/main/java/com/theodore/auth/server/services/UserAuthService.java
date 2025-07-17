@@ -8,8 +8,6 @@ public interface UserAuthService {
 
     AuthUserIdResponse registerNewOrganizationUser(CreateNewOrganizationAuthUserRequest newUserRequest);
 
-    AuthUserIdResponse registerNewOrganizationAdmin(CreateNewOrganizationAuthUserRequest newUserRequest);
-
     UserConfirmationResponse confirmRegistration(ConfirmUserAccountRequest request);
 
     UserConfirmationResponse confirmOrganizationAdminRegistration(ConfirmAdminAccountRequest request);

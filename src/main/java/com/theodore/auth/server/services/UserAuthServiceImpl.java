@@ -15,9 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -78,37 +78,14 @@ public class UserAuthServiceImpl implements UserAuthService {
 
         UserAuthInfo savedUser = userAuthInfoRepository.save(newUser);
 
-        return AuthUserIdResponse.newBuilder()
-                .setUserId(savedUser.getId())
-                .build();
-    }
+        RoleType roleType = RoleType.valueOf(newUserRequest.getRole());
 
-    @Transactional
-    @Override
-    public AuthUserIdResponse registerNewOrganizationAdmin(CreateNewOrganizationAuthUserRequest newUserRequest) {
-
-        LOGGER.info("Registration process for admin : {} working for organization : {}", newUserRequest.getEmail(), newUserRequest.getOrganizationRegNumber());
-
-        if (userAuthInfoRepository.existsByEmailOrMobileNumber(newUserRequest.getEmail(), newUserRequest.getMobileNumber())) {
-            throw new UserAlreadyExistsException(newUserRequest.getEmail());
-        }
-
-
-        UserAuthInfo newUser = new UserAuthInfo(newUserRequest.getEmail(),
-                newUserRequest.getMobileNumber(),
-                newUserRequest.getOrganizationRegNumber(),
-                passwordEncoder.encode(newUserRequest.getPassword()));
-
-        UserAuthInfo savedUser = userAuthInfoRepository.save(newUser);
-
-
-        Role role = roleRepository.findByRoleTypeAndActiveTrue(RoleType.ORGANIZATION_ADMIN)
+        Role role = roleRepository.findByRoleTypeAndActiveTrue(roleType)
                 .orElseThrow(() -> new NotFoundException("role not found"));//todo change exception
 
         UserRoles userRole = new UserRoles(savedUser, role);
         userRolesRepository.save(userRole);
 
-
         return AuthUserIdResponse.newBuilder()
                 .setUserId(savedUser.getId())
                 .build();
@@ -116,23 +93,23 @@ public class UserAuthServiceImpl implements UserAuthService {
 
     @Transactional
     @Override
-    public UserConfirmationResponse confirmRegistration(ConfirmUserAccountRequest request) {
+    public UserConfirmationResponse confirmRegistration(ConfirmUserAccountRequest accountConfirmationRequest) {
 
-        UserAuthInfo user = userAuthInfoRepository.getById(request.getUserId())
+        UserAuthInfo user = userAuthInfoRepository.getById(accountConfirmationRequest.getUserId())
                 .orElseThrow(() -> new NotFoundException("user not found"));//todo change the exception
 
         user.setEmailVerified(true);
 
-        Role role = roleRepository.findByRoleTypeAndActiveTrue(RoleType.SIMPLE_USER)
-                .orElseThrow(() -> new NotFoundException("role not found"));//todo change exception
+        if (CollectionUtils.isEmpty(user.getUserRoles())) {
+            Role role = roleRepository.findByRoleTypeAndActiveTrue(RoleType.SIMPLE_USER)
+                    .orElseThrow(() -> new NotFoundException("role not found"));//todo change exception
 
-        UserRoles userRole = new UserRoles(user, role);
-        userRolesRepository.save(userRole);
-
-        Set<UserRoles> userRolesSet = new HashSet<>();
-        userRolesSet.add(userRole);
-
-        user.setUserRoles(userRolesSet);
+            UserRoles userRole = new UserRoles(user, role);
+            userRolesRepository.save(userRole);
+            Set<UserRoles> userRolesSet = new HashSet<>();
+            userRolesSet.add(userRole);
+            user.setUserRoles(userRolesSet);
+        }
 
         userAuthInfoRepository.save(user);
 
@@ -164,7 +141,7 @@ public class UserAuthServiceImpl implements UserAuthService {
     public AuthUserIdResponse manageAuthUserAccount(ManageAuthUserAccountRequest manageUserAccountRequest) {
         UserAuthInfo user = userAuthInfoRepository.findByEmailIgnoreCaseAndMobileNumberIgnoreCaseAndEmailVerifiedTrue(manageUserAccountRequest.getOldEmail(),
                 manageUserAccountRequest.getMobileNumber()).orElseThrow(() -> new NotFoundException("user not found"));
-        if (!user.getPassword().equals(manageUserAccountRequest.getOldPassword())) {
+        if(!passwordEncoder.matches(manageUserAccountRequest.getOldPassword(), user.getPassword())){
             throw new RuntimeException("Passwords do not match");
         }
         user.setMobileNumber(manageUserAccountRequest.getMobileNumber());

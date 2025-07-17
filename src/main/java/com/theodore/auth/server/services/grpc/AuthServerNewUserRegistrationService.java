@@ -30,15 +30,15 @@ public class AuthServerNewUserRegistrationService extends AuthServerNewUserRegis
     }
 
     @Override
-    public void createOrganizationAdmin(CreateNewOrganizationAuthUserRequest request, StreamObserver<AuthUserIdResponse> responseObserver) {
-        var response = userAuthService.registerNewOrganizationAdmin(request);
+    public void confirmUserAccount(ConfirmUserAccountRequest request, StreamObserver<UserConfirmationResponse> responseObserver) {
+        UserConfirmationResponse response = getUserConfirmationResponse(request);
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 
     @Override
-    public void confirmUserAccount(ConfirmUserAccountRequest request, StreamObserver<UserConfirmationResponse> responseObserver) {
-        UserConfirmationResponse response = getUserConfirmationResponse(request);
+    public void confirmOrganizationAdminAccount(ConfirmAdminAccountRequest request, StreamObserver<UserConfirmationResponse> responseObserver) {
+        var response = userAuthService.confirmOrganizationAdminRegistration(request);
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
