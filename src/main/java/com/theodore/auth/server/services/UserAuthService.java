@@ -4,12 +4,18 @@ import com.theodore.user.*;
 
 public interface UserAuthService {
 
-    AuthUserCreatedResponse registerNewSimpleUser(CreateNewSimpleAuthUserRequest newUserRequest);
+    AuthUserIdResponse registerNewSimpleUser(CreateNewSimpleAuthUserRequest newUserRequest);
 
-    AuthUserCreatedResponse registerNewOrganizationUser(CreateNewOrganizationAuthUserRequest newUserRequest);
+    AuthUserIdResponse registerNewOrganizationUser(CreateNewOrganizationAuthUserRequest newUserRequest);
+
+    AuthUserIdResponse registerNewOrganizationAdmin(CreateNewOrganizationAuthUserRequest newUserRequest);
 
     UserConfirmationResponse confirmRegistration(ConfirmUserAccountRequest request);
 
+    UserConfirmationResponse confirmOrganizationAdminRegistration(ConfirmAdminAccountRequest request);
+
     void rollbackRegistration(String userId);
+
+    AuthUserIdResponse manageAuthUserAccount(ManageAuthUserAccountRequest manageUserAccountRequest);
 
 }

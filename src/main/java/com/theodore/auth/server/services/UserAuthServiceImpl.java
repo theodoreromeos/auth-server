@@ -9,9 +9,6 @@ import com.theodore.auth.server.repositories.UserRolesRepository;
 import com.theodore.racingmodel.entities.modeltypes.RoleType;
 import com.theodore.racingmodel.exceptions.NotFoundException;
 import com.theodore.racingmodel.exceptions.UserAlreadyExistsException;
-import com.theodore.racingmodel.models.AuthUserCreatedResponseDto;
-import com.theodore.racingmodel.models.CreateNewOrganizationAuthUserRequestDto;
-import com.theodore.racingmodel.models.CreateNewSimpleAuthUserRequestDto;
 import com.theodore.user.*;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -20,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -44,7 +42,7 @@ public class UserAuthServiceImpl implements UserAuthService {
 
     @Transactional
     @Override
-    public AuthUserCreatedResponse registerNewSimpleUser(CreateNewSimpleAuthUserRequest newUserRequest) {
+    public AuthUserIdResponse registerNewSimpleUser(CreateNewSimpleAuthUserRequest newUserRequest) {
 
         LOGGER.info("Registration process for user : {} ", newUserRequest.getEmail());
 
@@ -58,14 +56,14 @@ public class UserAuthServiceImpl implements UserAuthService {
 
         UserAuthInfo savedUser = userAuthInfoRepository.save(newUser);
 
-        return AuthUserCreatedResponse.newBuilder()
+        return AuthUserIdResponse.newBuilder()
                 .setUserId(savedUser.getId())
                 .build();
     }
 
     @Transactional
     @Override
-    public AuthUserCreatedResponse registerNewOrganizationUser(CreateNewOrganizationAuthUserRequest newUserRequest) {
+    public AuthUserIdResponse registerNewOrganizationUser(CreateNewOrganizationAuthUserRequest newUserRequest) {
 
         LOGGER.info("Registration process for user : {} working for organization : {}", newUserRequest.getEmail(), newUserRequest.getOrganizationRegNumber());
 
@@ -80,7 +78,38 @@ public class UserAuthServiceImpl implements UserAuthService {
 
         UserAuthInfo savedUser = userAuthInfoRepository.save(newUser);
 
-        return AuthUserCreatedResponse.newBuilder()
+        return AuthUserIdResponse.newBuilder()
+                .setUserId(savedUser.getId())
+                .build();
+    }
+
+    @Transactional
+    @Override
+    public AuthUserIdResponse registerNewOrganizationAdmin(CreateNewOrganizationAuthUserRequest newUserRequest) {
+
+        LOGGER.info("Registration process for admin : {} working for organization : {}", newUserRequest.getEmail(), newUserRequest.getOrganizationRegNumber());
+
+        if (userAuthInfoRepository.existsByEmailOrMobileNumber(newUserRequest.getEmail(), newUserRequest.getMobileNumber())) {
+            throw new UserAlreadyExistsException(newUserRequest.getEmail());
+        }
+
+
+        UserAuthInfo newUser = new UserAuthInfo(newUserRequest.getEmail(),
+                newUserRequest.getMobileNumber(),
+                newUserRequest.getOrganizationRegNumber(),
+                passwordEncoder.encode(newUserRequest.getPassword()));
+
+        UserAuthInfo savedUser = userAuthInfoRepository.save(newUser);
+
+
+        Role role = roleRepository.findByRoleTypeAndActiveTrue(RoleType.ORGANIZATION_ADMIN)
+                .orElseThrow(() -> new NotFoundException("role not found"));//todo change exception
+
+        UserRoles userRole = new UserRoles(savedUser, role);
+        userRolesRepository.save(userRole);
+
+
+        return AuthUserIdResponse.newBuilder()
                 .setUserId(savedUser.getId())
                 .build();
     }
@@ -112,8 +141,39 @@ public class UserAuthServiceImpl implements UserAuthService {
 
     @Transactional
     @Override
+    public UserConfirmationResponse confirmOrganizationAdminRegistration(ConfirmAdminAccountRequest request) {
+
+        UserAuthInfo user = userAuthInfoRepository.getById(request.getUserId())
+                .orElseThrow(() -> new NotFoundException("user not found"));//todo change the exception
+
+        user.setEmailVerified(true);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        userAuthInfoRepository.save(user);
+
+        return UserConfirmationResponse.newBuilder().setConfirmationStatus(ConfirmationStatus.CONFIRMED).build();
+    }
+
+    @Transactional
+    @Override
     public void rollbackRegistration(String userId) {
         userAuthInfoRepository.deleteById(userId);
     }
 
+    @Transactional
+    @Override
+    public AuthUserIdResponse manageAuthUserAccount(ManageAuthUserAccountRequest manageUserAccountRequest) {
+        UserAuthInfo user = userAuthInfoRepository.findByEmailIgnoreCaseAndMobileNumberIgnoreCaseAndEmailVerifiedTrue(manageUserAccountRequest.getOldEmail(),
+                manageUserAccountRequest.getMobileNumber()).orElseThrow(() -> new NotFoundException("user not found"));
+        if (!user.getPassword().equals(manageUserAccountRequest.getOldPassword())) {
+            throw new RuntimeException("Passwords do not match");
+        }
+        user.setMobileNumber(manageUserAccountRequest.getMobileNumber());
+        user.setPassword(passwordEncoder.encode(manageUserAccountRequest.getNewPassword()));
+        user.setEmail(manageUserAccountRequest.getNewEmail());
+        userAuthInfoRepository.save(user);
+
+        return AuthUserIdResponse.newBuilder()
+                .setUserId(user.getId())
+                .build();
+    }
 }

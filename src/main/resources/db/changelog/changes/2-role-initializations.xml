@@ -15,65 +15,8 @@
                    ('SUBSCRIBER', 'Subscriber of services', TRUE, NOW(), NOW()),
                    ('INSURANCE_AGENT', 'Handles insurance claims', TRUE, NOW(), NOW()),
                    ('MECHANIC', 'Vehicle mechanic', TRUE, NOW(), NOW()),
+                   ('ORGANIZATION_ADMIN', 'Organization account administrator', TRUE, NOW(), NOW()),
                    ('MANUFACTURER_REPRESENTATIVE', 'Manufacturer Representative', TRUE, NOW(), NOW());
-
-            --authority
-            INSERT INTO authority (type, description, active, date_created, date_updated)
-            VALUES ('PROFILE_MANAGE', 'Manage user profiles', TRUE, NOW(), NOW()),
-                   ('CLAIM_VIEW', 'View claims', TRUE, NOW(), NOW()),
-                   ('CLAIM_CREATE', 'Create claims', TRUE, NOW(), NOW()),
-                   ('CLAIM_UPDATE', 'Update claims', TRUE, NOW(), NOW()),
-                   ('CLAIM_STATUS_CHANGE', 'Change claim status', TRUE, NOW(), NOW()),
-                   ('CLAIM_AGENT_COMMENT', 'Comment as claim agent', TRUE, NOW(), NOW()),
-                   ('USER_RATING', 'Rate users', TRUE, NOW(), NOW());
-
-            --role_authority
-
-            --DRIVER
-            INSERT INTO role_authority (role_type, authority_type, date_created, date_updated)
-            VALUES ('DRIVER', 'CLAIM_VIEW', NOW(), NOW()),
-                   ('DRIVER', 'CLAIM_CREATE', NOW(), NOW()),
-                   ('DRIVER', 'USER_RATING', NOW(), NOW());
-
-            --SYS_ADMIN
-            INSERT INTO role_authority (role_type, authority_type, date_created, date_updated)
-            VALUES ('SYS_ADMIN', 'PROFILE_MANAGE', NOW(), NOW()),
-                   ('SYS_ADMIN', 'CLAIM_VIEW', NOW(), NOW()),
-                   ('SYS_ADMIN', 'CLAIM_CREATE', NOW(), NOW()),
-                   ('SYS_ADMIN', 'CLAIM_UPDATE', NOW(), NOW()),
-                   ('SYS_ADMIN', 'CLAIM_STATUS_CHANGE', NOW(), NOW()),
-                   ('SYS_ADMIN', 'CLAIM_AGENT_COMMENT', NOW(), NOW()),
-                   ('SYS_ADMIN', 'USER_RATING', NOW(), NOW());
-
-            --SIMPLE_USER
-            INSERT INTO role_authority (role_type, authority_type, date_created, date_updated)
-            VALUES ('SIMPLE_USER', 'PROFILE_MANAGE', NOW(), NOW()),
-                   ('SIMPLE_USER', 'CLAIM_VIEW', NOW(), NOW());
-
-            --SUBSCRIBER
-            INSERT INTO role_authority (role_type, authority_type, date_created, date_updated)
-            VALUES ('SUBSCRIBER', 'CLAIM_CREATE', NOW(), NOW()),
-                   ('SUBSCRIBER', 'CLAIM_VIEW', NOW(), NOW()),
-                   ('SUBSCRIBER', 'PROFILE_MANAGE', NOW(), NOW()),
-                   ('SUBSCRIBER', 'USER_RATING', NOW(), NOW());
-
-            --INSURANCE_AGENT
-            INSERT INTO role_authority (role_type, authority_type, date_created, date_updated)
-            VALUES ('INSURANCE_AGENT', 'CLAIM_VIEW', NOW(), NOW()),
-                   ('INSURANCE_AGENT', 'CLAIM_UPDATE', NOW(), NOW()),
-                   ('INSURANCE_AGENT', 'CLAIM_STATUS_CHANGE', NOW(), NOW()),
-                   ('INSURANCE_AGENT', 'CLAIM_AGENT_COMMENT', NOW(), NOW());
-
-            --MECHANIC
-            INSERT INTO role_authority (role_type, authority_type, date_created, date_updated)
-            VALUES ('MECHANIC', 'CLAIM_VIEW', NOW(), NOW()),
-                   ('MECHANIC', 'CLAIM_AGENT_COMMENT', NOW(), NOW());
-
-            --MANUFACTURER_REPRESENTATIVE
-            INSERT INTO role_authority (role_type, authority_type, date_created, date_updated)
-            VALUES ('MANUFACTURER_REPRESENTATIVE', 'CLAIM_VIEW', NOW(), NOW()),
-                   ('MANUFACTURER_REPRESENTATIVE', 'CLAIM_AGENT_COMMENT', NOW(), NOW());
-
         </sql>
     </changeSet>
 </databaseChangeLog>

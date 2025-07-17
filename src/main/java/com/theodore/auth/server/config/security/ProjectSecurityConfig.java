@@ -64,7 +64,6 @@ public class ProjectSecurityConfig {
     private static final String USERNAME = "username";
     private static final String ROLES = "roles";
     private static final String ORGANIZATION = "organization";
-    private static final String AUTHORITIES = "authorities";
 
     public ProjectSecurityConfig(RsaKeyProperties rsaKeyProperties, ResourceLoader resourceLoader) {
         this.rsaKeyProperties = rsaKeyProperties;
@@ -112,19 +111,21 @@ public class ProjectSecurityConfig {
 
     @Bean
     public RegisteredClientRepository registeredClientRepository() {
-        /// JWT ///
+        // JWT //
+
+        // CLIENT_CREDENTIALS
         RegisteredClient clientCredClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("mobility-api")
                 .clientSecret("{noop}thes333crEt")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .scopes(scopeConfig ->
-                        scopeConfig.addAll(List.of(OidcScopes.OPENID, "INTERNAL_SERVICE")))
+                        scopeConfig.addAll(List.of(OidcScopes.OPENID, RoleType.INTERNAL_SERVICE.getScopeValue())))
                 .tokenSettings(TokenSettings.builder().accessTokenTimeToLive(Duration.ofMinutes(10))
                         .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED).build())
                 .build();
 
-        ///////////////////////////
+        // AUTHORIZATION_CODE
         RegisteredClient pkceClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("mobility-public")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
@@ -187,12 +188,11 @@ public class ProjectSecurityConfig {
                 String clientId = context.getPrincipal().getName();
 
                 context.getClaims().claim(USERNAME, clientId);
-                context.getClaims().claim(ORGANIZATION, List.of("INTERNAL_SERVICE"));
+                context.getClaims().claim(ORGANIZATION, List.of(RoleType.INTERNAL_SERVICE.getScopeValue()));
 
                 Set<String> scopes = determineScopes(context);
 
                 context.getClaims().claim(ROLES, scopes);
-                context.getClaims().claim(AUTHORITIES, scopes);
 
             } else if (AuthorizationGrantType.AUTHORIZATION_CODE.equals(context.getAuthorizationGrantType())) {
 
@@ -202,13 +202,12 @@ public class ProjectSecurityConfig {
                 if (principal.getOrganizationRegNumber() != null) {
                     context.getClaims().claim(ORGANIZATION, principal.getOrganizationRegNumber());
                 }
-                context.getClaims().claim(ROLES, principal.getRoles());
 
                 principal.getAuthorities().forEach(authority -> {//todo remove it
                     System.out.println(">>>>>>>>> " + authority.getAuthority());
                 });
 
-                context.getClaims().claim(AUTHORITIES, principal.getAuthorities().stream()
+                context.getClaims().claim(ROLES, principal.getAuthorities().stream()
                         .map(GrantedAuthority::getAuthority)
                         .toList());
             }
@@ -253,6 +252,7 @@ public class ProjectSecurityConfig {
         return GrpcSecurity.configure()
                 .requireRole("user.AuthServerNewUserRegistration/CreateSimpleUser", RoleType.INTERNAL_SERVICE)
                 .requireRole("user.AuthServerNewUserRegistration/CreateOrganizationUser", RoleType.INTERNAL_SERVICE)
+                .requireRole("user.AuthServerNewUserRegistration/CreateOrganizationAdmin", RoleType.INTERNAL_SERVICE)
                 .requireRole("user.AuthServerNewUserRegistration/ConfirmUserAccount", RoleType.INTERNAL_SERVICE)
                 .build();
     }

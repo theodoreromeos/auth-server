@@ -16,15 +16,22 @@ public class AuthServerNewUserRegistrationService extends AuthServerNewUserRegis
     }
 
     @Override
-    public void createSimpleUser(CreateNewSimpleAuthUserRequest request, StreamObserver<AuthUserCreatedResponse> responseObserver) {
+    public void createSimpleUser(CreateNewSimpleAuthUserRequest request, StreamObserver<AuthUserIdResponse> responseObserver) {
         var response = userAuthService.registerNewSimpleUser(request);
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 
     @Override
-    public void createOrganizationUser(CreateNewOrganizationAuthUserRequest request, StreamObserver<AuthUserCreatedResponse> responseObserver) {
+    public void createOrganizationUser(CreateNewOrganizationAuthUserRequest request, StreamObserver<AuthUserIdResponse> responseObserver) {
         var response = userAuthService.registerNewOrganizationUser(request);
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void createOrganizationAdmin(CreateNewOrganizationAuthUserRequest request, StreamObserver<AuthUserIdResponse> responseObserver) {
+        var response = userAuthService.registerNewOrganizationAdmin(request);
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }

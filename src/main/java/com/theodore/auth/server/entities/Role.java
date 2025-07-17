@@ -3,8 +3,6 @@ package com.theodore.auth.server.entities;
 import com.theodore.racingmodel.entities.modeltypes.RoleType;
 import jakarta.persistence.*;
 
-import java.util.Set;
-
 @Entity
 @Table(name = "role")
 public class Role {
@@ -21,9 +19,6 @@ public class Role {
     @Column(name = "active", nullable = false)
     @Basic
     private Boolean active = true;
-
-    @OneToMany(mappedBy = "role", fetch = FetchType.LAZY)
-    private Set<RoleAuthority> roleAuthorities;
 
     public Role() {
     }
@@ -62,11 +57,4 @@ public class Role {
         this.active = active;
     }
 
-    public Set<RoleAuthority> getRoleAuthorities() {
-        return roleAuthorities;
-    }
-
-    public void setRoleAuthorities(Set<RoleAuthority> roleAuthorities) {
-        this.roleAuthorities = roleAuthorities;
-    }
 }

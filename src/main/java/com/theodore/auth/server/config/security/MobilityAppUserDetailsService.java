@@ -27,19 +27,14 @@ public class MobilityAppUserDetailsService implements UserDetailsService {
         UserAuthInfo user = userAuthInfoRepository.findByEmailIgnoreCaseAndMobileNumberIgnoreCaseAndEmailVerifiedTrue(username, username)
                 .orElseThrow(() -> new UsernameNotFoundException("User " + username + " not found"));
         List<GrantedAuthority> authorities = getGrantedAuthorities(user);
-        List<UserRoles> activeUserRolesList = user.getUserRoles().stream()
-                .filter(UserRoles::getActive)
-                .toList();
-        List<String> roleTypes = activeUserRolesList.stream().map(userRole -> userRole.getRole().getRoleType().name()).toList();
 
-        return new MobilityUserDetails(user, roleTypes, authorities);
+        return new MobilityUserDetails(user, authorities);
     }
 
     private List<GrantedAuthority> getGrantedAuthorities(UserAuthInfo user) {
         return user.getUserRoles().stream()
                 .filter(UserRoles::getActive)
-                .flatMap(userRole -> userRole.getRole().getRoleAuthorities().stream())
-                .map(roleAuth -> new SimpleGrantedAuthority(roleAuth.getAuthority().getType().name()))
+                .map(userRole -> new SimpleGrantedAuthority(userRole.getRole().getRoleType().name()))
                 .collect(Collectors.toList());
     }
 
