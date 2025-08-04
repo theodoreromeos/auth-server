@@ -16,4 +16,6 @@ public interface UserAuthService {
 
     AuthUserIdResponse manageAuthUserAccount(ManageAuthUserAccountRequest manageUserAccountRequest);
 
+    OrgAdminIdAndEmailResponse getOrganizationAdminInfo(String orgRegistrationNumber);
+
 }

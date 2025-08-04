@@ -13,6 +13,7 @@ import com.theodore.user.*;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -95,7 +96,7 @@ public class UserAuthServiceImpl implements UserAuthService {
     @Override
     public UserConfirmationResponse confirmRegistration(ConfirmUserAccountRequest accountConfirmationRequest) {
 
-        UserAuthInfo user = userAuthInfoRepository.getById(accountConfirmationRequest.getUserId())
+        UserAuthInfo user = userAuthInfoRepository.findById(accountConfirmationRequest.getUserId())
                 .orElseThrow(() -> new NotFoundException("user not found"));//todo change the exception
 
         user.setEmailVerified(true);
@@ -120,11 +121,18 @@ public class UserAuthServiceImpl implements UserAuthService {
     @Override
     public UserConfirmationResponse confirmOrganizationAdminRegistration(ConfirmAdminAccountRequest request) {
 
-        UserAuthInfo user = userAuthInfoRepository.getById(request.getUserId())
+        UserAuthInfo user = userAuthInfoRepository.findById(request.getUserId())
                 .orElseThrow(() -> new NotFoundException("user not found"));//todo change the exception
 
+        LOGGER.info("OLD PASSWORD: {} ", request.getOldPassword());
+        LOGGER.info("current password: {} ", user.getPassword());
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("Old password is incorrect");
+        }
+
         user.setEmailVerified(true);
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userAuthInfoRepository.save(user);
 
         return UserConfirmationResponse.newBuilder().setConfirmationStatus(ConfirmationStatus.CONFIRMED).build();
@@ -133,7 +141,11 @@ public class UserAuthServiceImpl implements UserAuthService {
     @Transactional
     @Override
     public void rollbackRegistration(String userId) {
-        userAuthInfoRepository.deleteById(userId);
+        var user = userAuthInfoRepository.findById(userId).orElseThrow(() -> new NotFoundException("user not found"));
+        if (!CollectionUtils.isEmpty(user.getUserRoles())) {
+            userRolesRepository.deleteAll(user.getUserRoles());
+        }
+        userAuthInfoRepository.delete(user);
     }
 
     @Transactional
@@ -141,8 +153,8 @@ public class UserAuthServiceImpl implements UserAuthService {
     public AuthUserIdResponse manageAuthUserAccount(ManageAuthUserAccountRequest manageUserAccountRequest) {
         UserAuthInfo user = userAuthInfoRepository.findByEmailIgnoreCaseAndMobileNumberIgnoreCaseAndEmailVerifiedTrue(manageUserAccountRequest.getOldEmail(),
                 manageUserAccountRequest.getMobileNumber()).orElseThrow(() -> new NotFoundException("user not found"));
-        if(!passwordEncoder.matches(manageUserAccountRequest.getOldPassword(), user.getPassword())){
-            throw new RuntimeException("Passwords do not match");
+        if (!passwordEncoder.matches(manageUserAccountRequest.getOldPassword(), user.getPassword())) {
+            throw new RuntimeException("Passwords do not match");//todo
         }
         user.setMobileNumber(manageUserAccountRequest.getMobileNumber());
         user.setPassword(passwordEncoder.encode(manageUserAccountRequest.getNewPassword()));
@@ -152,5 +164,21 @@ public class UserAuthServiceImpl implements UserAuthService {
         return AuthUserIdResponse.newBuilder()
                 .setUserId(user.getId())
                 .build();
+    }
+
+    @Override
+    public OrgAdminIdAndEmailResponse getOrganizationAdminInfo(String orgRegistrationNumber) {
+        var orgAdmins = userAuthInfoRepository
+                .findDistinctByOrganizationRegistrationNumberAndEmailVerifiedTrueAndUserRoles_ActiveTrueAndUserRoles_Role_RoleType(
+                        orgRegistrationNumber, RoleType.ORGANIZATION_ADMIN
+                );
+        var adminIdAndEmailList = orgAdmins.stream()
+                .map(orgAdmin -> OrganizationAdminUserIdAndEmail.newBuilder()
+                        .setAdminId(orgAdmin.getId())
+                        .setAdminEmail(orgAdmin.getEmail())
+                        .build())
+                .toList();
+
+        return OrgAdminIdAndEmailResponse.newBuilder().addAllOrganizationAdminInfo(adminIdAndEmailList).build();
     }
 }

@@ -43,6 +43,13 @@ public class AuthServerNewUserRegistrationService extends AuthServerNewUserRegis
         responseObserver.onCompleted();
     }
 
+    @Override
+    public void getAdminIdAndEmails(OrgRegistrationNumberRequest request, StreamObserver<OrgAdminIdAndEmailResponse> responseObserver) {
+        var response = userAuthService.getOrganizationAdminInfo(request.getRegistrationNumber());
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
     private UserConfirmationResponse getUserConfirmationResponse(ConfirmUserAccountRequest request) {
         try {
             return userAuthService.confirmRegistration(request);
