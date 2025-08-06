@@ -82,7 +82,7 @@ public class UserAuthServiceImpl implements UserAuthService {
         RoleType roleType = RoleType.valueOf(newUserRequest.getRole());
 
         Role role = roleRepository.findByRoleTypeAndActiveTrue(roleType)
-                .orElseThrow(() -> new NotFoundException("role not found"));//todo change exception
+                .orElseThrow(() -> new NotFoundException("Role not found"));
 
         UserRoles userRole = new UserRoles(savedUser, role);
         userRolesRepository.save(userRole);
@@ -97,13 +97,13 @@ public class UserAuthServiceImpl implements UserAuthService {
     public UserConfirmationResponse confirmRegistration(ConfirmUserAccountRequest accountConfirmationRequest) {
 
         UserAuthInfo user = userAuthInfoRepository.findById(accountConfirmationRequest.getUserId())
-                .orElseThrow(() -> new NotFoundException("user not found"));//todo change the exception
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         user.setEmailVerified(true);
 
         if (CollectionUtils.isEmpty(user.getUserRoles())) {
             Role role = roleRepository.findByRoleTypeAndActiveTrue(RoleType.SIMPLE_USER)
-                    .orElseThrow(() -> new NotFoundException("role not found"));//todo change exception
+                    .orElseThrow(() -> new NotFoundException("Role not found"));
 
             UserRoles userRole = new UserRoles(user, role);
             userRolesRepository.save(userRole);
@@ -122,10 +122,7 @@ public class UserAuthServiceImpl implements UserAuthService {
     public UserConfirmationResponse confirmOrganizationAdminRegistration(ConfirmAdminAccountRequest request) {
 
         UserAuthInfo user = userAuthInfoRepository.findById(request.getUserId())
-                .orElseThrow(() -> new NotFoundException("user not found"));//todo change the exception
-
-        LOGGER.info("OLD PASSWORD: {} ", request.getOldPassword());
-        LOGGER.info("current password: {} ", user.getPassword());
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             throw new IllegalArgumentException("Old password is incorrect");
@@ -154,7 +151,7 @@ public class UserAuthServiceImpl implements UserAuthService {
         UserAuthInfo user = userAuthInfoRepository.findByEmailIgnoreCaseAndMobileNumberIgnoreCaseAndEmailVerifiedTrue(manageUserAccountRequest.getOldEmail(),
                 manageUserAccountRequest.getMobileNumber()).orElseThrow(() -> new NotFoundException("user not found"));
         if (!passwordEncoder.matches(manageUserAccountRequest.getOldPassword(), user.getPassword())) {
-            throw new RuntimeException("Passwords do not match");//todo
+            throw new BadCredentialsException("Passwords do not match");
         }
         user.setMobileNumber(manageUserAccountRequest.getMobileNumber());
         user.setPassword(passwordEncoder.encode(manageUserAccountRequest.getNewPassword()));

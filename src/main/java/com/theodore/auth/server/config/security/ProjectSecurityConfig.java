@@ -203,10 +203,6 @@ public class ProjectSecurityConfig {
                     context.getClaims().claim(ORGANIZATION, principal.getOrganizationRegNumber());
                 }
 
-                principal.getAuthorities().forEach(authority -> {//todo remove it
-                    System.out.println(">>>>>>>>> " + authority.getAuthority());
-                });
-
                 context.getClaims().claim(ROLES, principal.getAuthorities().stream()
                         .map(GrantedAuthority::getAuthority)
                         .toList());

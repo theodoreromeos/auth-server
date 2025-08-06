@@ -1,5 +1,6 @@
 package com.theodore.auth.server.config.security;
 
+import com.theodore.auth.server.exceptions.KeyLoadingException;
 import org.springframework.core.io.Resource;
 
 import java.nio.charset.StandardCharsets;
@@ -27,7 +28,7 @@ public class RsaKeyUtils {
             PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(decoded);
             return (RSAPrivateKey) KeyFactory.getInstance("RSA").generatePrivate(keySpec);
         } catch (Exception e) {
-            throw new RuntimeException("ERROR", e);//todo : check which exception to put
+            throw new KeyLoadingException("Error loading the private key", e);
         }
     }
 
@@ -43,7 +44,7 @@ public class RsaKeyUtils {
             X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decoded);
             return (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(keySpec);
         } catch (Exception e) {
-            throw new RuntimeException("ERROR", e);//todo : check which exception to put
+            throw new KeyLoadingException("Error loading the public key", e);
         }
     }
 

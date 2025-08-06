@@ -54,7 +54,7 @@ public class AdminAccountCreation implements ApplicationRunner {
             userAuthInfoRepository.save(admin);
 
             Role role = roleRepository.findByRoleTypeAndActiveTrue(RoleType.SYS_ADMIN)
-                    .orElseThrow(() -> new NotFoundException("role not found"));//todo change exception
+                    .orElseThrow(() -> new NotFoundException("Role not found"));
 
             UserRoles userRole = new UserRoles(admin, role);
             userRolesRepository.save(userRole);
