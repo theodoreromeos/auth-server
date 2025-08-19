@@ -11,7 +11,7 @@ import java.util.Optional;
 @Repository
 public interface UserAuthInfoRepository extends CrudRepository<UserAuthInfo, String> {
 
-    Optional<UserAuthInfo> findByEmailIgnoreCaseAndMobileNumberIgnoreCaseAndEmailVerifiedTrue(String email, String mobileNumber);
+    Optional<UserAuthInfo> findByEmailOrMobileNumberAllIgnoreCase(String email, String mobileNumber);
 
     boolean existsByEmailOrMobileNumber(String email, String mobileNumber);
 

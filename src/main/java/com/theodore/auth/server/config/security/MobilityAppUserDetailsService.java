@@ -24,7 +24,7 @@ public class MobilityAppUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        UserAuthInfo user = userAuthInfoRepository.findByEmailIgnoreCaseAndMobileNumberIgnoreCaseAndEmailVerifiedTrue(username, username)
+        UserAuthInfo user = userAuthInfoRepository.findByEmailOrMobileNumberAllIgnoreCase(username, username)
                 .orElseThrow(() -> new UsernameNotFoundException("User " + username + " not found"));
         List<GrantedAuthority> authorities = getGrantedAuthorities(user);
 
