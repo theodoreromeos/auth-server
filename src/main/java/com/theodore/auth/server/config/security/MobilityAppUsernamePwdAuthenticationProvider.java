@@ -16,7 +16,7 @@ public class MobilityAppUsernamePwdAuthenticationProvider implements Authenticat
     private final PasswordEncoder passwordEncoder;
 
     public MobilityAppUsernamePwdAuthenticationProvider(MobilityAppUserDetailsService mobilityAppUserDetailsService,
-                                                     PasswordEncoder passwordEncoder) {
+                                                        PasswordEncoder passwordEncoder) {
         this.mobilityAppUserDetailsService = mobilityAppUserDetailsService;
         this.passwordEncoder = passwordEncoder;
     }
@@ -27,7 +27,7 @@ public class MobilityAppUsernamePwdAuthenticationProvider implements Authenticat
         String password = authentication.getCredentials().toString();
         UserDetails userDetails = mobilityAppUserDetailsService.loadUserByUsername(username);
         if (passwordEncoder.matches(password, userDetails.getPassword())) {
-            return new UsernamePasswordAuthenticationToken(username, password, userDetails.getAuthorities());
+            return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
         } else {
             throw new BadCredentialsException("INVALID CREDENTIALS");
         }
