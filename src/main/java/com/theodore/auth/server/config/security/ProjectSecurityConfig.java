@@ -11,8 +11,10 @@ import io.jsonwebtoken.security.Keys;
 import net.devh.boot.grpc.server.serverfactory.GrpcServerConfigurer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -21,6 +23,7 @@ import org.springframework.security.authentication.password.CompromisedPasswordC
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -43,7 +46,9 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.password.HaveIBeenPwnedRestApiPasswordChecker;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.web.filter.ForwardedHeaderFilter;
 
 import javax.crypto.SecretKey;
 import java.security.interfaces.RSAPrivateKey;
@@ -75,34 +80,77 @@ public class ProjectSecurityConfig {
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http)
             throws Exception {
-        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
-                OAuth2AuthorizationServerConfigurer.authorizationServer();
+        var authorizationServerConfigurer = OAuth2AuthorizationServerConfigurer.authorizationServer();
 
         http
                 .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
                 .with(authorizationServerConfigurer, authorizationServer ->
-                        authorizationServer
-                                .oidc(Customizer.withDefaults()) // OpenID Connect 1
+                        authorizationServer.oidc(Customizer.withDefaults()) // OpenID Connect 1
                 )
-                .authorizeHttpRequests(authorize ->
-                        authorize
-                                .anyRequest().authenticated()
-
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/login", "/login/**", "/error").permitAll()
+                        .anyRequest().authenticated()
                 )
                 // Redirect to the login page when not authenticated from the
                 // authorization endpoint
-                .exceptionHandling(exceptions -> exceptions
-                        .defaultAuthenticationEntryPointFor(
+                .exceptionHandling(exceptions ->
+                        exceptions.defaultAuthenticationEntryPointFor(
                                 new LoginUrlAuthenticationEntryPoint("/login"),
                                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
                         )
-                );
+                )
+                .csrf(csrf ->
+                        csrf.ignoringRequestMatchers("/oauth2/token", "/oauth2/introspect", "/oauth2/revoke"));
 
         return http.build();
     }
 
     @Bean
     @Order(2)
+    SecurityFilterChain appSecurityFilterChain(HttpSecurity http) throws Exception {
+        var csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        csrfRepo.setCookiePath("/auth");
+        csrfRepo.setCookieName("XSRF-TOKEN");
+
+        http.authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/login",
+                                "/login/**",
+                                "/api/auth/login",
+                                "/assets/**",
+                                "/error",
+                                "/oauth2/**",
+                                "/.well-known/**").permitAll()
+                        .anyRequest().authenticated())
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(csrfRepo)
+                        .ignoringRequestMatchers("/login", "/api/auth/login")
+                )
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .loginProcessingUrl("/api/auth/login")
+                        .successHandler((request, response, authentication) -> {
+                            response.setStatus(200);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"status\":\"success\"}");
+                        })
+                        .failureHandler((request, response, exception) -> {
+                            response.setStatus(401);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"status\":\"failed\"}");
+                        })
+                        .permitAll());
+        return http.build();
+    }
+
+    @Bean
+    public FilterRegistrationBean<ForwardedHeaderFilter> forwardedHeaderFilter() {
+        FilterRegistrationBean<ForwardedHeaderFilter> filterRegBean = new FilterRegistrationBean<>();
+        filterRegBean.setFilter(new ForwardedHeaderFilter());
+        filterRegBean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return filterRegBean;
+    }
+
+    @Bean
     public GrpcServerConfigurer secureGrpcServer(JwtServerInterceptor interceptor) {
         return serverBuilder -> serverBuilder
                 .intercept(interceptor)
@@ -125,25 +173,26 @@ public class ProjectSecurityConfig {
                         .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED).build())
                 .build();
 
-        // AUTHORIZATION_CODE
+        // PKCE
         RegisteredClient pkceClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("mobility-public")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("https://oauth.pstmn.io/v1/callback")
+                .redirectUri("http://localhost:9999/login/callback")
                 .scopes(s -> {
                     s.add(OidcScopes.OPENID);
                     s.add(OidcScopes.EMAIL);
                 })
                 .clientSettings(ClientSettings.builder()
-                        .requireProofKey(true).build())
+                        .requireProofKey(true)
+                        .build())
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(Duration.ofMinutes(10))
                         .refreshTokenTimeToLive(Duration.ofHours(8))
                         .reuseRefreshTokens(false)
-                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED).build())
+                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
+                        .build())
                 .build();
 
         return new InMemoryRegisteredClientRepository(clientCredClient, pkceClient);
@@ -196,16 +245,17 @@ public class ProjectSecurityConfig {
 
             } else if (AuthorizationGrantType.AUTHORIZATION_CODE.equals(context.getAuthorizationGrantType())) {
 
-                MobilityUserDetails principal = context.getPrincipal();
-
-                context.getClaims().claim(USERNAME, principal.getEmail());
-                if (principal.getOrganizationRegNumber() != null) {
-                    context.getClaims().claim(ORGANIZATION, principal.getOrganizationRegNumber());
+                Authentication principal = context.getPrincipal();
+                Object principalObj = principal.getPrincipal();
+                if (principalObj instanceof MobilityUserDetails mobilityUserDetails) {
+                    context.getClaims().claim(USERNAME, mobilityUserDetails.getEmail());
+                    if (mobilityUserDetails.getOrganizationRegNumber() != null) {
+                        context.getClaims().claim(ORGANIZATION, mobilityUserDetails.getOrganizationRegNumber());
+                    }
+                    context.getClaims().claim(ROLES, mobilityUserDetails.getAuthorities().stream()
+                            .map(GrantedAuthority::getAuthority)
+                            .toList());
                 }
-
-                context.getClaims().claim(ROLES, principal.getAuthorities().stream()
-                        .map(GrantedAuthority::getAuthority)
-                        .toList());
             }
         };
     }
@@ -234,7 +284,7 @@ public class ProjectSecurityConfig {
 
     @Bean("emailJwtSigningKey")
     public SecretKey emailJwtSigningKey() {
-        // For HS256; for production, load from Vault or ENV
+        // for "production" load from Vault or ENV
         return Keys.secretKeyFor(SignatureAlgorithm.HS256);//TODO
     }
 

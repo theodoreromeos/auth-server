@@ -148,7 +148,7 @@ public class UserAuthServiceImpl implements UserAuthService {
     @Transactional
     @Override
     public AuthUserIdResponse manageAuthUserAccount(ManageAuthUserAccountRequest manageUserAccountRequest) {
-        UserAuthInfo user = userAuthInfoRepository.findByEmailIgnoreCaseAndMobileNumberIgnoreCaseAndEmailVerifiedTrue(manageUserAccountRequest.getOldEmail(),
+        UserAuthInfo user = userAuthInfoRepository.findByEmailOrMobileNumberAllIgnoreCase(manageUserAccountRequest.getOldEmail(),
                 manageUserAccountRequest.getMobileNumber()).orElseThrow(() -> new NotFoundException("user not found"));
         if (!passwordEncoder.matches(manageUserAccountRequest.getOldPassword(), user.getPassword())) {
             throw new BadCredentialsException("Passwords do not match");
