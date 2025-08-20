@@ -141,15 +141,7 @@ public class ProjectSecurityConfig {
                         .permitAll());
         return http.build();
     }
-
-    @Bean
-    public FilterRegistrationBean<ForwardedHeaderFilter> forwardedHeaderFilter() {
-        FilterRegistrationBean<ForwardedHeaderFilter> filterRegBean = new FilterRegistrationBean<>();
-        filterRegBean.setFilter(new ForwardedHeaderFilter());
-        filterRegBean.setOrder(Ordered.HIGHEST_PRECEDENCE);
-        return filterRegBean;
-    }
-
+    
     @Bean
     public GrpcServerConfigurer secureGrpcServer(JwtServerInterceptor interceptor) {
         return serverBuilder -> serverBuilder
@@ -188,7 +180,7 @@ public class ProjectSecurityConfig {
                         .requireProofKey(true)
                         .build())
                 .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofMinutes(10))
+                        .accessTokenTimeToLive(Duration.ofMinutes(100))
                         .refreshTokenTimeToLive(Duration.ofHours(8))
                         .reuseRefreshTokens(false)
                         .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
@@ -222,7 +214,9 @@ public class ProjectSecurityConfig {
 
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
-        return AuthorizationServerSettings.builder().build();
+        return AuthorizationServerSettings.builder()
+                .issuer("http://localhost:9000/auth-server")//todo: env variable
+                .build();
     }
 
     @Bean
