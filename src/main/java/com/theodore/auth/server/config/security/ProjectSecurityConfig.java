@@ -231,7 +231,6 @@ public class ProjectSecurityConfig {
                 String clientId = context.getPrincipal().getName();
 
                 context.getClaims().claim(USERNAME, clientId);
-                context.getClaims().claim(ORGANIZATION, List.of(RoleType.INTERNAL_SERVICE.getScopeValue()));
 
                 Set<String> scopes = determineScopes(context);
 
