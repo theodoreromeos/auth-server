@@ -3,6 +3,7 @@ package com.theodore.auth.server.entities;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.theodore.racingmodel.entities.AuditableUpdateEntity;
+import com.theodore.racingmodel.utils.MobilityUtils;
 import com.theodore.racingmodel.utils.UlidGenerated;
 import jakarta.persistence.*;
 
@@ -131,4 +132,11 @@ public class UserAuthInfo extends AuditableUpdateEntity {
     public void setUserRoles(Set<UserRoles> userRoles) {
         this.userRoles = userRoles;
     }
+
+    @PrePersist
+    @PreUpdate
+    public void normalizeEmail() {
+        email = MobilityUtils.normalizeEmail(email);
+    }
+
 }
