@@ -11,10 +11,8 @@ import io.jsonwebtoken.security.Keys;
 import net.devh.boot.grpc.server.serverfactory.GrpcServerConfigurer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -48,7 +46,6 @@ import org.springframework.security.web.authentication.LoginUrlAuthenticationEnt
 import org.springframework.security.web.authentication.password.HaveIBeenPwnedRestApiPasswordChecker;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
-import org.springframework.web.filter.ForwardedHeaderFilter;
 
 import javax.crypto.SecretKey;
 import java.security.interfaces.RSAPrivateKey;
@@ -91,8 +88,7 @@ public class ProjectSecurityConfig {
                         .requestMatchers("/login", "/login/**", "/error").permitAll()
                         .anyRequest().authenticated()
                 )
-                // Redirect to the login page when not authenticated from the
-                // authorization endpoint
+                // Redirect to the login page when not authenticated from the authorization endpoint
                 .exceptionHandling(exceptions ->
                         exceptions.defaultAuthenticationEntryPointFor(
                                 new LoginUrlAuthenticationEntryPoint("/login"),
@@ -225,7 +221,6 @@ public class ProjectSecurityConfig {
             if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
                 return;
             }
-
             if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
 
                 String clientId = context.getPrincipal().getName();

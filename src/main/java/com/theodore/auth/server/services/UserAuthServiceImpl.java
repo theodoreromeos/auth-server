@@ -9,6 +9,7 @@ import com.theodore.auth.server.repositories.UserRolesRepository;
 import com.theodore.racingmodel.entities.modeltypes.RoleType;
 import com.theodore.racingmodel.exceptions.NotFoundException;
 import com.theodore.racingmodel.exceptions.UserAlreadyExistsException;
+import com.theodore.racingmodel.utils.MobilityUtils;
 import com.theodore.user.*;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -44,14 +45,15 @@ public class UserAuthServiceImpl implements UserAuthService {
     @Transactional
     @Override
     public AuthUserIdResponse registerNewSimpleUser(CreateNewSimpleAuthUserRequest newUserRequest) {
+        String email = MobilityUtils.normalizeEmail(newUserRequest.getEmail());
 
-        LOGGER.info("Registration process for user : {} ", newUserRequest.getEmail());
+        LOGGER.info("Registration process for user : {} ", email);
 
-        if (userAuthInfoRepository.existsByEmailOrMobileNumber(newUserRequest.getEmail(), newUserRequest.getMobileNumber())) {
-            throw new UserAlreadyExistsException(newUserRequest.getEmail());
+        if (userAuthInfoRepository.existsByEmailOrMobileNumber(email, newUserRequest.getMobileNumber())) {
+            throw new UserAlreadyExistsException(email);
         }
 
-        UserAuthInfo newUser = new UserAuthInfo(newUserRequest.getEmail(),
+        UserAuthInfo newUser = new UserAuthInfo(email,
                 newUserRequest.getMobileNumber(),
                 passwordEncoder.encode(newUserRequest.getPassword()));
 
@@ -65,14 +67,15 @@ public class UserAuthServiceImpl implements UserAuthService {
     @Transactional
     @Override
     public AuthUserIdResponse registerNewOrganizationUser(CreateNewOrganizationAuthUserRequest newUserRequest) {
+        String email = MobilityUtils.normalizeEmail(newUserRequest.getEmail());
 
-        LOGGER.info("Registration process for user : {} working for organization : {}", newUserRequest.getEmail(), newUserRequest.getOrganizationRegNumber());
+        LOGGER.info("Registration process for user : {} working for organization : {}", email, newUserRequest.getOrganizationRegNumber());
 
-        if (userAuthInfoRepository.existsByEmailOrMobileNumber(newUserRequest.getEmail(), newUserRequest.getMobileNumber())) {
-            throw new UserAlreadyExistsException(newUserRequest.getEmail());
+        if (userAuthInfoRepository.existsByEmailOrMobileNumber(email, newUserRequest.getMobileNumber())) {
+            throw new UserAlreadyExistsException(email);
         }
 
-        UserAuthInfo newUser = new UserAuthInfo(newUserRequest.getEmail(),
+        UserAuthInfo newUser = new UserAuthInfo(email,
                 newUserRequest.getMobileNumber(),
                 newUserRequest.getOrganizationRegNumber(),
                 passwordEncoder.encode(newUserRequest.getPassword()));
@@ -155,7 +158,7 @@ public class UserAuthServiceImpl implements UserAuthService {
         }
         user.setMobileNumber(manageUserAccountRequest.getMobileNumber());
         user.setPassword(passwordEncoder.encode(manageUserAccountRequest.getNewPassword()));
-        user.setEmail(manageUserAccountRequest.getNewEmail());
+        user.setEmail(MobilityUtils.normalizeEmail(manageUserAccountRequest.getNewEmail()));
         userAuthInfoRepository.save(user);
 
         return AuthUserIdResponse.newBuilder()
