@@ -1,7 +1,7 @@
 package com.theodore.auth.server.repositories;
 
 import com.theodore.auth.server.entities.UserAuthInfo;
-import com.theodore.racingmodel.entities.modeltypes.RoleType;
+import com.theodore.infrastructure.common.entities.modeltypes.RoleType;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 

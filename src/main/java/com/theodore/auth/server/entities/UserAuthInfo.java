@@ -2,9 +2,9 @@ package com.theodore.auth.server.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.theodore.racingmodel.entities.AuditableUpdateEntity;
-import com.theodore.racingmodel.utils.MobilityUtils;
-import com.theodore.racingmodel.utils.UlidGenerated;
+import com.theodore.infrastructure.common.entities.AuditableUpdateEntity;
+import com.theodore.infrastructure.common.utils.MobilityUtils;
+import com.theodore.infrastructure.common.utils.UlidGenerated;
 import jakarta.persistence.*;
 
 import java.time.Instant;

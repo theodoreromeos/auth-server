@@ -1,6 +1,6 @@
 package com.theodore.auth.server.config.security;
 
-import com.theodore.racingmodel.entities.modeltypes.RoleType;
+import com.theodore.infrastructure.common.entities.modeltypes.RoleType;
 import io.grpc.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

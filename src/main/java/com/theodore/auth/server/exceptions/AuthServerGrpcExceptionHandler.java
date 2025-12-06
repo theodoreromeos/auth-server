@@ -1,8 +1,8 @@
 package com.theodore.auth.server.exceptions;
 
-import com.theodore.racingmodel.exceptions.NotFoundException;
-import com.theodore.racingmodel.exceptions.RollbackProcessingException;
-import com.theodore.racingmodel.exceptions.UserAlreadyExistsException;
+import com.theodore.infrastructure.common.exceptions.NotFoundException;
+import com.theodore.infrastructure.common.exceptions.RollbackProcessingException;
+import com.theodore.infrastructure.common.exceptions.UserAlreadyExistsException;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import net.devh.boot.grpc.server.advice.GrpcAdvice;

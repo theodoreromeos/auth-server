@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.5</version>
+        <version>3.5.6</version>
         <relativePath/>
     </parent>
     <groupId>com.theodore.auth.server</groupId>
@@ -19,6 +19,8 @@
     </developers>
     <properties>
         <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <grpc.spring.boot.version>3.1.0.RELEASE</grpc.spring.boot.version>
         <grpc.java.version>1.58.0</grpc.java.version>
     </properties>
@@ -74,12 +76,12 @@
 
         <!--   Theodore dependencies     -->
         <dependency>
-            <groupId>com.theodore</groupId>
-            <artifactId>mobility-model</artifactId>
+            <groupId>com.theodore.common</groupId>
+            <artifactId>infrastructure-common</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>
-            <groupId>com.theodore</groupId>
+            <groupId>com.theodore.common</groupId>
             <artifactId>proto-common</artifactId>
             <version>0.0.1</version>
         </dependency>

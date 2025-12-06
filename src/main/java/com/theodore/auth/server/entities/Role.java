@@ -1,6 +1,6 @@
 package com.theodore.auth.server.entities;
 
-import com.theodore.racingmodel.entities.modeltypes.RoleType;
+import com.theodore.infrastructure.common.entities.modeltypes.RoleType;
 import jakarta.persistence.*;
 
 @Entity

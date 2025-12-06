@@ -82,3 +82,19 @@ $RECYCLE.BIN/
 .coverage/
 jacoco.exec
 .cache/
+
+ JVM crash logs
+hs_err_pid*
+replay_pid*
+
+# Extra IntelliJ files
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+
+# Maven wrapper
+.mvn/wrapper/maven-wrapper.properties
+mvnw
+mvnw.cmd

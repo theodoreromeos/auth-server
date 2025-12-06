@@ -1,6 +1,6 @@
 package com.theodore.auth.server.utils;
 
-import com.theodore.racingmodel.exceptions.NotFoundException;
+import com.theodore.infrastructure.common.exceptions.NotFoundException;
 import com.theodore.user.ConfirmationStatus;
 import com.theodore.user.UserConfirmationResponse;
 

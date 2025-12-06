@@ -1,7 +1,7 @@
 package com.theodore.auth.server.services;
 
 import com.theodore.queue.common.authserver.CredentialsRollbackEventDto;
-import com.theodore.racingmodel.exceptions.RollbackProcessingException;
+import com.theodore.infrastructure.common.exceptions.RollbackProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;

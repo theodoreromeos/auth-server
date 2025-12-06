@@ -1,6 +1,6 @@
 package com.theodore.auth.server.entities;
 
-import com.theodore.racingmodel.entities.AuditableUpdateEntity;
+import com.theodore.infrastructure.common.entities.AuditableUpdateEntity;
 import jakarta.persistence.*;
 
 @Entity

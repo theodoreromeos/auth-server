@@ -5,7 +5,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import com.theodore.racingmodel.entities.modeltypes.RoleType;
+import com.theodore.infrastructure.common.entities.modeltypes.RoleType;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import net.devh.boot.grpc.server.serverfactory.GrpcServerConfigurer;
