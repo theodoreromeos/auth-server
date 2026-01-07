@@ -53,4 +53,6 @@ public interface UserAuthService {
      */
     OrgAdminIdAndEmailResponse getOrganizationAdminInfo(String orgRegistrationNumber);
 
+    void addUserRole(AddRoleRequest request);
+
 }
