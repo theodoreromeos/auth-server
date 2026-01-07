@@ -291,6 +291,7 @@ public class ProjectSecurityConfig {
                 .requireRole("user.AuthServerNewUserRegistration/ConfirmOrganizationAdminAccount", RoleType.INTERNAL_SERVICE)
                 .requireRole("user.AuthServerNewUserRegistration/GetAdminIdAndEmails", RoleType.INTERNAL_SERVICE)
                 .requireRole("user.AuthServerAccountManagement/ManageUserAccount", RoleType.INTERNAL_SERVICE)
+                .requireRole("user.AuthServerRoleManagement/AddRole", RoleType.INTERNAL_SERVICE)
                 .build();
     }
 

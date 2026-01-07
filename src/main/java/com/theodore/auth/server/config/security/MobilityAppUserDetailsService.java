@@ -2,6 +2,7 @@ package com.theodore.auth.server.config.security;
 
 import com.theodore.auth.server.entities.UserAuthInfo;
 import com.theodore.auth.server.entities.UserRoles;
+import com.theodore.auth.server.exceptions.UnverifiedAccountException;
 import com.theodore.auth.server.repositories.UserAuthInfoRepository;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -26,6 +27,9 @@ public class MobilityAppUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         UserAuthInfo user = userAuthInfoRepository.findByEmailOrMobileNumberAllIgnoreCase(username, username)
                 .orElseThrow(() -> new UsernameNotFoundException("User " + username + " not found"));
+        if(Boolean.FALSE.equals(user.getEmailVerified())){
+            throw new UnverifiedAccountException();
+        }
         List<GrantedAuthority> authorities = getGrantedAuthorities(user);
 
         return new MobilityUserDetails(user, authorities);

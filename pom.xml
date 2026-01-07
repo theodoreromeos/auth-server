@@ -85,8 +85,6 @@
             <artifactId>proto-common</artifactId>
             <version>0.0.1</version>
         </dependency>
-
-        <!--   RABBITMQ     -->
         <dependency>
             <groupId>com.theodore.queue.common</groupId>
             <artifactId>rabbitmq-common</artifactId>

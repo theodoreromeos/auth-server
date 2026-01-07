@@ -3,6 +3,7 @@ package com.theodore.auth.server.services;
 import com.theodore.auth.server.entities.Role;
 import com.theodore.auth.server.entities.UserAuthInfo;
 import com.theodore.auth.server.entities.UserRoles;
+import com.theodore.auth.server.exceptions.RoleAlreadyAssignedException;
 import com.theodore.auth.server.repositories.RoleRepository;
 import com.theodore.auth.server.repositories.UserAuthInfoRepository;
 import com.theodore.auth.server.repositories.UserRolesRepository;
@@ -180,5 +181,27 @@ public class UserAuthServiceImpl implements UserAuthService {
                 .toList();
 
         return OrgAdminIdAndEmailResponse.newBuilder().addAllOrganizationAdminInfo(adminIdAndEmailList).build();
+    }
+
+    @Override
+    public void addUserRole(AddRoleRequest request) {
+        var user = userAuthInfoRepository.findById(request.getUserId()).orElseThrow(() -> new NotFoundException("User not found"));
+        RoleType roleType = RoleType.fromString(request.getRole());
+        checkValidityOfAddingRoleToUser(user, roleType);
+        UserRoles newUserRole = new UserRoles();
+        newUserRole.setUser(user);
+        newUserRole.setActive(true);
+        Role role = roleRepository.findByRoleTypeAndActiveTrue(roleType).orElseThrow(() -> new NotFoundException("Role not found"));
+        newUserRole.setRole(role);
+        userRolesRepository.save(newUserRole);
+    }
+
+    private void checkValidityOfAddingRoleToUser(UserAuthInfo user, RoleType roleType) {
+        if (user.getUserRoles().stream().anyMatch(userRole -> userRole.getRole().getRoleType().equals(roleType))) {
+            throw new RoleAlreadyAssignedException();
+        }
+        if (user.getUserRoles().isEmpty()) {
+            throw new NotFoundException("User roles not found");
+        }
     }
 }
