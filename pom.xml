@@ -9,20 +9,23 @@
         <relativePath/>
     </parent>
     <groupId>com.theodore.auth.server</groupId>
-    <artifactId>racing-authserver</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>racing-authserver</name>
-    <description>Demo project for Spring Auth Server</description>
-    <url/>
-    <developers>
-        <developer/>
-    </developers>
+    <artifactId>mobility-authserver</artifactId>
+    <version>1.0.0</version>
+    <name>mobility-authserver</name>
+    <description>Spring Auth Server Demo Project</description>
     <properties>
-        <java.version>21</java.version>
+        <!--   ENCODING     -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- JAVA VERSION -->
+        <java.version>21</java.version>
+        <!--    GRPC VERSIONS    -->
         <grpc.spring.boot.version>3.1.0.RELEASE</grpc.spring.boot.version>
-        <grpc.java.version>1.58.0</grpc.java.version>
+        <grpc.java.version>1.78.0</grpc.java.version>
+        <!--   Theodore versions     -->
+        <mobility-common.version>0.0.5-SNAPSHOT</mobility-common.version>
+        <!--    JWT VERSIONS    -->
+        <jwt.version>0.11.5</jwt.version>
     </properties>
 
     <dependencyManagement>
@@ -78,35 +81,35 @@
         <dependency>
             <groupId>com.theodore.common</groupId>
             <artifactId>infrastructure-common</artifactId>
-            <version>0.0.1</version>
+            <version>${mobility-common.version}</version>
         </dependency>
         <dependency>
             <groupId>com.theodore.common</groupId>
             <artifactId>proto-common</artifactId>
-            <version>0.0.1</version>
+            <version>${mobility-common.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.theodore.queue.common</groupId>
+            <groupId>com.theodore.common</groupId>
             <artifactId>rabbitmq-common</artifactId>
-            <version>0.0.1</version>
+            <version>${mobility-common.version}</version>
         </dependency>
 
         <!--	JWT	  -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
-            <version>0.11.5</version>
+            <version>${jwt.version}</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
-            <version>0.11.5</version>
+            <version>${jwt.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>0.11.5</version>
+            <version>${jwt.version}</version>
             <scope>runtime</scope>
         </dependency>
         <!--    VALIDATION    -->
