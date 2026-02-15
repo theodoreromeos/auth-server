@@ -68,13 +68,12 @@ public class JwtServerInterceptor implements ServerInterceptor {
 
     private boolean hasRequiredScope(String method, List<String> scopes) {
         RoleType requiredAuthority = grpcServicePolicies.get(method);
-        LOGGER.info("the method name : {}", method);
-        LOGGER.info("the required scopes : {}", scopes);
+        LOGGER.debug("the method name : {}, the required scopes : {}", method, scopes);
         if (requiredAuthority == null) {
             LOGGER.error("required authority is null");
             return false;
         }
-        LOGGER.info("the required authority : {}", requiredAuthority.getScopeValue());
+        LOGGER.debug("the required authority : {}", requiredAuthority.getScopeValue());
         if (scopes == null || scopes.isEmpty()) {
             return false;
         }
