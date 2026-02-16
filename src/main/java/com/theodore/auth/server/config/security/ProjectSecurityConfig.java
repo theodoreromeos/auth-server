@@ -190,46 +190,54 @@ public class ProjectSecurityConfig {
                                                  @Value("${oauth2.redirect.logout.uri}") String logoutUri) {
         return args -> {
             if (repository.findByClientId("mobility-api") == null) {
-                RegisteredClient clientCredClient = RegisteredClient
-                        .withId("mobility-api-id")
-                        .clientId("mobility-api")
-                        .clientSecret(passwordEncoder.encode(apiSecret))
-                        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                        .scopes(scope -> scope.add(RoleType.INTERNAL_SERVICE.getScopeValue()))
-                        .tokenSettings(TokenSettings.builder()
-                                .accessTokenTimeToLive(Duration.ofMinutes(10))
-                                .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
-                                .build())
-                        .build();
-                repository.save(clientCredClient);
+                var clientCredentials = createClientCredentials(passwordEncoder, apiSecret);
+                repository.save(clientCredentials);
             }
             if (repository.findByClientId("mobility-public") == null) {
-                RegisteredClient pkceClient = RegisteredClient
-                        .withId("mobility-public-id")
-                        .clientId("mobility-public")
-                        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-                        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                        .redirectUri(redirectUri)
-                        .postLogoutRedirectUri(logoutUri)
-                        .scopes(s -> {
-                            s.add(OidcScopes.OPENID);
-                            s.add(OidcScopes.EMAIL);
-                        })
-                        .clientSettings(ClientSettings.builder()
-                                .requireProofKey(true)
-                                .build())
-                        .tokenSettings(TokenSettings.builder()
-                                .accessTokenTimeToLive(Duration.ofMinutes(5))
-                                .refreshTokenTimeToLive(Duration.ofHours(8))
-                                .reuseRefreshTokens(false)
-                                .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
-                                .build())
-                        .build();
+                var pkceClient = createPkceClient(redirectUri, logoutUri);
                 repository.save(pkceClient);
             }
         };
+    }
+
+    private RegisteredClient createClientCredentials(PasswordEncoder passwordEncoder, String apiSecret) {
+        return RegisteredClient
+                .withId("mobility-api-id")
+                .clientId("mobility-api")
+                .clientSecret(passwordEncoder.encode(apiSecret))
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .scopes(scope -> scope.add(RoleType.INTERNAL_SERVICE.getScopeValue()))
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofMinutes(10))
+                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
+                        .build())
+                .build();
+    }
+
+    private RegisteredClient createPkceClient(String redirectUri, String logoutUri) {
+        return RegisteredClient
+                .withId("mobility-public-id")
+                .clientId("mobility-public")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .redirectUri(redirectUri)
+                .postLogoutRedirectUri(logoutUri)
+                .scopes(s -> {
+                    s.add(OidcScopes.OPENID);
+                    s.add(OidcScopes.EMAIL);
+                })
+                .clientSettings(ClientSettings.builder()
+                        .requireProofKey(true)
+                        .build())
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofMinutes(100))
+                        .refreshTokenTimeToLive(Duration.ofHours(8))
+                        .reuseRefreshTokens(false)
+                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
+                        .build())
+                .build();
     }
 
     @Bean
