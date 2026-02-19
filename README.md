@@ -46,22 +46,22 @@ Key paths and key ID are configured via application properties.
 
 Client registrations, authorizations, and consent decisions are persisted to PostgreSQL 
 with Spring Authorization Server's JDBC implementations. 
-A scheduled cleanup task purges expired authorizations every 6 hours to prevent unbounded table growth.
+A scheduled cleanup task purges expired authorizations to prevent unbounded table growth.
 ---
 
 ## Tech Stack
 
-| Layer             | Technology                                             |
-|-------------------|--------------------------------------------------------|
-| Language          | Java 21                                                |
-| Framework         | Spring Boot 3.5.6, Spring Authorization Server         |
-| Database          | PostgreSQL                                             |
-| Migrations        | Liquibase                                              |
-| Inter-service RPC | gRPC 1.78.0                                            |
-| Messaging         | RabbitMQ (via `rabbitmq-common` library)               |
-| Token Signning    | RSA (via Nimbus JOSE, bundled with Spring Auth Server) |
-| Logging           | Logback                                                |
-| Build             | Maven                                                  |
+| Layer             | Technology                                     |
+|-------------------|------------------------------------------------|
+| Language          | Java 21                                        |
+| Framework         | Spring Boot 3.5.6, Spring Authorization Server |
+| Database          | PostgreSQL                                     |
+| Migrations        | Liquibase                                      |
+| Inter-service RPC | gRPC 1.78.0                                    |
+| Messaging         | RabbitMQ (via `rabbitmq-common` library)       |
+| Token Signning    | RSA (Nimbus JOSE + Spring Auth Server)         |
+| Logging           | Logback                                        |
+| Build             | Maven                                          |
 
 ---
 
