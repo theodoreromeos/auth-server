@@ -15,7 +15,7 @@ import java.util.List;
 
 public class MobilityUserDetailsDeserializer extends JsonDeserializer<MobilityUserDetails> {
 
-    private static final String ORG_REG_NUMBER = "orgRegNumber";
+    private static final String ORG_REG_NUMBER = "organizationRegNumber";
     private static final String PASSWORD = "password";
 
     @Override
@@ -24,7 +24,6 @@ public class MobilityUserDetailsDeserializer extends JsonDeserializer<MobilityUs
         ObjectMapper mapper = (ObjectMapper) parser.getCodec();
         JsonNode root = mapper.readTree(parser);
 
-        // Spring Security User
         String password = root.has(PASSWORD) && !root.get(PASSWORD).isNull()
                 ? root.get(PASSWORD).asText() : "";
         boolean enabled = root.has("enabled") ? root.get("enabled").asBoolean() : true;
@@ -40,7 +39,6 @@ public class MobilityUserDetailsDeserializer extends JsonDeserializer<MobilityUs
                 && !root.get(ORG_REG_NUMBER).isNull()
                 ? root.get(ORG_REG_NUMBER).asText() : null;
 
-        // Authorities
         List<GrantedAuthority> authorities = new ArrayList<>();
         JsonNode authoritiesNode = root.get("authorities");
         if (authoritiesNode != null && authoritiesNode.isArray()) {
