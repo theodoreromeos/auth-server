@@ -1,6 +1,6 @@
-package com.theodore.utils;
+package com.theodore.auth.server.utils;
 
-import com.theodore.auth.server.TestDataHelper;
+import com.theodore.auth.server.integration.TestDataHelper;
 import com.theodore.auth.server.repositories.RoleRepository;
 import com.theodore.auth.server.repositories.UserAuthInfoRepository;
 import com.theodore.auth.server.repositories.UserRolesRepository;

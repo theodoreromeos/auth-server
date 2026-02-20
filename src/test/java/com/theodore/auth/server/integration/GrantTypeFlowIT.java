@@ -1,7 +1,7 @@
-package com.theodore.auth.server;
+package com.theodore.auth.server.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.theodore.utils.TestData;
+import com.theodore.auth.server.utils.TestData;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

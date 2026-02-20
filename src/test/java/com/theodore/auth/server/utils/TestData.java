@@ -1,4 +1,4 @@
-package com.theodore.utils;
+package com.theodore.auth.server.utils;
 
 public class TestData {
 

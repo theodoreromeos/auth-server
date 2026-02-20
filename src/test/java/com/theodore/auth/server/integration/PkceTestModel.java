@@ -1,4 +1,4 @@
-package com.theodore.auth.server;
+package com.theodore.auth.server.integration;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

@@ -1,4 +1,4 @@
-package com.theodore.auth.server;
+package com.theodore.auth.server.integration;
 
 import com.theodore.auth.server.entities.Role;
 import com.theodore.auth.server.entities.UserAuthInfo;
@@ -7,7 +7,7 @@ import com.theodore.auth.server.repositories.RoleRepository;
 import com.theodore.auth.server.repositories.UserAuthInfoRepository;
 import com.theodore.auth.server.repositories.UserRolesRepository;
 import com.theodore.infrastructure.common.entities.modeltypes.RoleType;
-import com.theodore.utils.TestData;
+import com.theodore.auth.server.utils.TestData;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 

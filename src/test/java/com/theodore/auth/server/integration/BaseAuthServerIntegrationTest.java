@@ -1,7 +1,7 @@
-package com.theodore.auth.server;
+package com.theodore.auth.server.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.theodore.utils.AuthServerTestConfigs;
+import com.theodore.auth.server.utils.AuthServerTestConfigs;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
