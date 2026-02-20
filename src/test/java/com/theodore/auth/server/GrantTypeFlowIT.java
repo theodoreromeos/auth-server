@@ -30,7 +30,7 @@ class GrantTypeFlowIT extends BaseAuthServerIntegrationTest {
     }
 
     @Test
-    @DisplayName("simple user full PKCE flow: login -> authorize -> exchange code -> verify JWT claims")
+    @DisplayName("Full simple user PKCE flow: login -> authorize -> exchange code -> verify JWT claims")
     void givenValidSimpleUserCredentials_whenDoingFullPkceFlow_issueJwt() throws Exception {
         // given
         var pkce = PkceTestModel.createPkceTestModel();
@@ -82,7 +82,7 @@ class GrantTypeFlowIT extends BaseAuthServerIntegrationTest {
     }
 
     @Test
-    @DisplayName("organization user full PKCE flow: login -> authorize -> exchange code -> verify JWT claims")
+    @DisplayName("Full organization user PKCE flow: login -> authorize -> exchange code -> verify JWT claims")
     void givenValidOrgUserCredentials_whenDoingFullPkceFlow_issueJwt() throws Exception {
         // given
         var pkce = PkceTestModel.createPkceTestModel();
@@ -133,7 +133,7 @@ class GrantTypeFlowIT extends BaseAuthServerIntegrationTest {
     }
 
     @Test
-    @DisplayName("Authorization process: Given invalid credentials the login fails and should return 401 and not create a session")
+    @DisplayName("PKCE flow: Given invalid credentials the login fails and should return 401 and not create a session")
     void givenInvalidCredentials_whenLogin_returnUnauthorized() {
         var result = client.post()
                 .uri("/api/auth/login")
@@ -154,7 +154,7 @@ class GrantTypeFlowIT extends BaseAuthServerIntegrationTest {
     }
 
     @Test
-    @DisplayName("Authorization process: After successful login and recieing auth code, given wrong verifier in step 3 should reject token exchange with invalid_grant")
+    @DisplayName("PKCE flow: After successful login and recieing auth code, given wrong verifier in step 3 should reject token exchange with invalid_grant")
     void givenIncorrectVerifier_whenAttemptingTheTokenExchange_returnBadRequest() throws Exception {
         // given
         var pkce = PkceTestModel.createPkceTestModel();
