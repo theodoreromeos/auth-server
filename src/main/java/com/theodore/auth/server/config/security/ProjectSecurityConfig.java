@@ -1,15 +1,16 @@
 package com.theodore.auth.server.config.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.theodore.auth.server.utils.MobilityUserDetailsMixIn;
 import com.theodore.infrastructure.common.entities.modeltypes.RoleType;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
 import net.devh.boot.grpc.server.serverfactory.GrpcServerConfigurer;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.password.CompromisedPasswordChecker;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -25,16 +27,18 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
-import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.*;
+import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.oauth2.server.authorization.jackson2.OAuth2AuthorizationServerJackson2Module;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
@@ -48,6 +52,7 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
@@ -137,7 +142,7 @@ public class ProjectSecurityConfig {
                         .permitAll());
         return http.build();
     }
-    
+
     @Bean
     public GrpcServerConfigurer secureGrpcServer(JwtServerInterceptor interceptor) {
         return serverBuilder -> serverBuilder
@@ -146,28 +151,79 @@ public class ProjectSecurityConfig {
     }
 
     @Bean
-    public RegisteredClientRepository registeredClientRepository() {
-        // JWT //
+    public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcRegisteredClientRepository(jdbcTemplate);
+    }
 
-        // CLIENT_CREDENTIALS
-        RegisteredClient clientCredClient = RegisteredClient.withId(UUID.randomUUID().toString())
+    @Bean
+    public OAuth2AuthorizationService authorizationService(
+            JdbcTemplate jdbcTemplate, RegisteredClientRepository clientRepo) {
+        JdbcOAuth2AuthorizationService service =
+                new JdbcOAuth2AuthorizationService(jdbcTemplate, clientRepo);
+
+        JdbcOAuth2AuthorizationService.OAuth2AuthorizationRowMapper rowMapper =
+                new JdbcOAuth2AuthorizationService.OAuth2AuthorizationRowMapper(clientRepo);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        ClassLoader classLoader = JdbcOAuth2AuthorizationService.class.getClassLoader();
+        objectMapper.registerModules(SecurityJackson2Modules.getModules(classLoader));
+        objectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());
+        objectMapper.addMixIn(MobilityUserDetails.class, MobilityUserDetailsMixIn.class);
+
+        rowMapper.setObjectMapper(objectMapper);
+        service.setAuthorizationRowMapper(rowMapper);
+
+        return service;
+    }
+
+    @Bean
+    public OAuth2AuthorizationConsentService authorizationConsentService(
+            JdbcTemplate jdbcTemplate, RegisteredClientRepository clientRepo) {
+        return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, clientRepo);
+    }
+
+    @Bean
+    public ApplicationRunner grantTypeFlowFeeder(RegisteredClientRepository repository,
+                                                 PasswordEncoder passwordEncoder,
+                                                 @Value("${oauth2.client.mobility-api.secret}") String apiSecret,
+                                                 @Value("${oauth2.redirect.uri}") String redirectUri,
+                                                 @Value("${oauth2.redirect.logout.uri}") String logoutUri) {
+        return args -> {
+            if (repository.findByClientId("mobility-api") == null) {
+                var clientCredentials = createClientCredentials(passwordEncoder, apiSecret);
+                repository.save(clientCredentials);
+            }
+            if (repository.findByClientId("mobility-public") == null) {
+                var pkceClient = createPkceClient(redirectUri, logoutUri);
+                repository.save(pkceClient);
+            }
+        };
+    }
+
+    private RegisteredClient createClientCredentials(PasswordEncoder passwordEncoder, String apiSecret) {
+        return RegisteredClient
+                .withId("mobility-api-id")
                 .clientId("mobility-api")
-                .clientSecret("{noop}thes333crEt")
+                .clientSecret(passwordEncoder.encode(apiSecret))
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .scopes(scopeConfig ->
-                        scopeConfig.addAll(List.of(OidcScopes.OPENID, RoleType.INTERNAL_SERVICE.getScopeValue())))
-                .tokenSettings(TokenSettings.builder().accessTokenTimeToLive(Duration.ofMinutes(10))
-                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED).build())
+                .scopes(scope -> scope.add(RoleType.INTERNAL_SERVICE.getScopeValue()))
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofMinutes(10))
+                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
+                        .build())
                 .build();
+    }
 
-        // PKCE
-        RegisteredClient pkceClient = RegisteredClient.withId(UUID.randomUUID().toString())
+    private RegisteredClient createPkceClient(String redirectUri, String logoutUri) {
+        return RegisteredClient
+                .withId("mobility-public-id")
                 .clientId("mobility-public")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("http://localhost:9999/login/callback")
+                .redirectUri(redirectUri)
+                .postLogoutRedirectUri(logoutUri)
                 .scopes(s -> {
                     s.add(OidcScopes.OPENID);
                     s.add(OidcScopes.EMAIL);
@@ -182,8 +238,6 @@ public class ProjectSecurityConfig {
                         .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
                         .build())
                 .build();
-
-        return new InMemoryRegisteredClientRepository(clientCredClient, pkceClient);
     }
 
     @Bean
@@ -209,10 +263,8 @@ public class ProjectSecurityConfig {
     }
 
     @Bean
-    public AuthorizationServerSettings authorizationServerSettings() {
-        return AuthorizationServerSettings.builder()
-                .issuer("http://localhost:9000/auth-server")//todo: env variable
-                .build();
+    public AuthorizationServerSettings authorizationServerSettings(@Value("${issuer.url}") String issuerUrl) {
+        return AuthorizationServerSettings.builder().issuer(issuerUrl).build();
     }
 
     @Bean
@@ -271,9 +323,8 @@ public class ProjectSecurityConfig {
     }
 
     @Bean("emailJwtSigningKey")
-    public SecretKey emailJwtSigningKey() {
-        // for "production" load from Vault or ENV
-        return Keys.secretKeyFor(SignatureAlgorithm.HS256);//TODO
+    public SecretKey emailJwtSigningKey(@Value("${jwt.signing.secret.key}") String secret) {
+        return new SecretKeySpec(Base64.getDecoder().decode(secret), "HmacSHA256");
     }
 
     @Bean("emailTokenValiditySeconds")
