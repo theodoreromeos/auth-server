@@ -214,7 +214,8 @@ is associated with an organization.
 ## Database Schema
 
 Liquibase manages all schema migrations automatically on startup. 
-In addition to application-specific tables, the following Spring Authorization Server tables are provisioned:
+In addition to application-specific tables, the following Spring Authorization Server tables 
+are provisioned:
 
 | Table                            | Purpose                                                |
 |----------------------------------|--------------------------------------------------------|
@@ -279,5 +280,10 @@ and the service:
 docker compose up -d
 ```
 
-> **Current state:** The provided `docker-compose.yml` starts only the PostgreSQL database. Service containerization is in progress.
+> **Current state:** The provided `docker-compose.yml` starts only the PostgreSQL database. 
+> Service containerization is in progress.
+
+> [!CAUTION] 
+> **Make sure all required infrastructure services (PostgreSQL, RabbitMQ) 
+> are available before starting.**
 
