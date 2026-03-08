@@ -18,13 +18,13 @@ public class UserManagementListener {
         this.userAuthService = userAuthService;
     }
 
-    @RabbitListener(queues = "${rabbitmq.queue}")
+    @RabbitListener(queues = "${credentials.rollback.queue}")
     public void receive(CredentialsRollbackEventDto message) {
-        LOGGER.trace("Received rollback request");
+        LOGGER.info("Received rollback request");
         try {
             userAuthService.rollbackRegistration(message.userId());
         } catch (Exception e) {
-            LOGGER.error("Failed to rollback user registration for userId={}: {}", message.userId(), e);
+            LOGGER.error("Failed to rollback user registration for userId={}", message.userId(), e);
             throw new RollbackProcessingException("Failed to rollback registration for userId=" + message.userId(), e);
         }
     }
