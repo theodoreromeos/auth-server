@@ -1,4 +1,4 @@
-package com.theodore.auth.server.config.security;
+package com.theodore.auth.server.models;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

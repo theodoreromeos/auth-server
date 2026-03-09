@@ -41,10 +41,10 @@ public class JwtServerInterceptor implements ServerInterceptor {
         String token = authHeader.substring(7);
         try {
             Jwt jwt = jwtDecoder.decode(token);
-            List<String> scopes = jwt.getClaimAsStringList("scope");
+            List<String> roles = jwt.getClaimAsStringList("roles");
 
-            if (!hasRequiredScope(methodName, scopes)) {
-                return closeCallWithError(call, Status.PERMISSION_DENIED, "scope missing");
+            if (!hasRequiredScope(methodName, roles)) {
+                return closeCallWithError(call, Status.PERMISSION_DENIED, "Roles Missing");
             }
 
             return Contexts.interceptCall(Context.current(), call, headers, next);
