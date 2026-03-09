@@ -1,13 +1,18 @@
 package com.theodore.auth.server.config.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.theodore.auth.server.models.RsaKeyProperties;
+import com.theodore.auth.server.models.TokenTtlProperties;
 import com.theodore.auth.server.utils.MobilityUserDetailsMixIn;
 import com.theodore.infrastructure.common.entities.modeltypes.RoleType;
+import jakarta.servlet.http.HttpServletResponse;
 import net.devh.boot.grpc.server.serverfactory.GrpcServerConfigurer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
@@ -17,8 +22,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.authentication.password.CompromisedPasswordChecker;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -31,6 +38,8 @@ import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.core.oidc.StandardClaimNames;
+import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.*;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
@@ -50,6 +59,9 @@ import org.springframework.security.web.authentication.LoginUrlAuthenticationEnt
 import org.springframework.security.web.authentication.password.HaveIBeenPwnedRestApiPasswordChecker;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -62,19 +74,26 @@ import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties(RsaKeyProperties.class)
+@EnableConfigurationProperties({RsaKeyProperties.class, TokenTtlProperties.class})
 public class ProjectSecurityConfig {
 
     private final ResourceLoader resourceLoader;
     private final RsaKeyProperties rsaKeyProperties;
+    private final TokenTtlProperties tokenTtlProperties;
+    private final String issuerUrl;
 
     private static final String USERNAME = "username";
     private static final String ROLES = "roles";
     private static final String ORGANIZATION = "organization";
 
-    public ProjectSecurityConfig(RsaKeyProperties rsaKeyProperties, ResourceLoader resourceLoader) {
+    public ProjectSecurityConfig(RsaKeyProperties rsaKeyProperties,
+                                 ResourceLoader resourceLoader,
+                                 TokenTtlProperties tokenTtlProperties,
+                                 @Value("${issuer.url}") String issuerUrl) {
         this.rsaKeyProperties = rsaKeyProperties;
         this.resourceLoader = resourceLoader;
+        this.tokenTtlProperties = tokenTtlProperties;
+        this.issuerUrl = issuerUrl;
     }
 
 
@@ -99,6 +118,10 @@ public class ProjectSecurityConfig {
                                 new LoginUrlAuthenticationEntryPoint("/login"),
                                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
                         )
+                )
+                .sessionManagement(session -> session
+                        .sessionFixation().changeSessionId()
+                        .maximumSessions(1)
                 )
                 .csrf(csrf ->
                         csrf.ignoringRequestMatchers("/oauth2/token", "/oauth2/introspect", "/oauth2/revoke"));
@@ -130,16 +153,21 @@ public class ProjectSecurityConfig {
                         .loginPage("/login")
                         .loginProcessingUrl("/api/auth/login")
                         .successHandler((request, response, authentication) -> {
-                            response.setStatus(200);
-                            response.setContentType("application/json");
+                            response.setStatus(HttpServletResponse.SC_OK);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                             response.getWriter().write("{\"status\":\"success\"}");
                         })
                         .failureHandler((request, response, exception) -> {
-                            response.setStatus(401);
-                            response.setContentType("application/json");
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                             response.getWriter().write("{\"status\":\"failed\"}");
                         })
-                        .permitAll());
+                        .permitAll())
+                .sessionManagement(session -> session
+                        .sessionFixation().changeSessionId()
+                        .maximumSessions(5)
+                        .maxSessionsPreventsLogin(false)
+                );
         return http.build();
     }
 
@@ -209,7 +237,7 @@ public class ProjectSecurityConfig {
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .scopes(scope -> scope.add(RoleType.INTERNAL_SERVICE.getScopeValue()))
                 .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofMinutes(10))
+                        .accessTokenTimeToLive(tokenTtlProperties.clientCredentialsAccess())
                         .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
                         .build())
                 .build();
@@ -232,8 +260,8 @@ public class ProjectSecurityConfig {
                         .requireProofKey(true)
                         .build())
                 .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofMinutes(100))
-                        .refreshTokenTimeToLive(Duration.ofHours(8))
+                        .accessTokenTimeToLive(tokenTtlProperties.pkceAccess())
+                        .refreshTokenTimeToLive(tokenTtlProperties.pkceRefresh())
                         .reuseRefreshTokens(false)
                         .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
                         .build())
@@ -252,6 +280,8 @@ public class ProjectSecurityConfig {
         RSAKey rsaKey = new RSAKey.Builder(publicKey)
                 .privateKey(privateKey)
                 .keyID(rsaKeyProperties.keyId())
+                .keyUse(KeyUse.SIGNATURE)       // /oauth2/jwks publishes keys with no declared algorithm or use, which breaks strict client-side JWK validation
+                .algorithm(JWSAlgorithm.RS256)  // and is non-compliant with RFC 7517.
                 .build();
         JWKSet jwkSet = new JWKSet(rsaKey);
         return new ImmutableJWKSet<>(jwkSet);
@@ -263,42 +293,64 @@ public class ProjectSecurityConfig {
     }
 
     @Bean
-    public AuthorizationServerSettings authorizationServerSettings(@Value("${issuer.url}") String issuerUrl) {
+    public AuthorizationServerSettings authorizationServerSettings() {
         return AuthorizationServerSettings.builder().issuer(issuerUrl).build();
     }
 
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
         return context -> {
-            if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
-                return;
-            }
-            if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
+            String clientId = context.getRegisteredClient().getClientId();
+            context.getClaims().audience(List.of(issuerUrl, clientId));
 
-                String clientId = context.getPrincipal().getName();
-
-                context.getClaims().claim(USERNAME, clientId);
-
-                Set<String> scopes = determineScopes(context);
-
-                context.getClaims().claim(ROLES, scopes);
-
-            } else if (AuthorizationGrantType.AUTHORIZATION_CODE.equals(context.getAuthorizationGrantType())) {
-
-                Authentication principal = context.getPrincipal();
-                Object principalObj = principal.getPrincipal();
-                if (principalObj instanceof MobilityUserDetails mobilityUserDetails) {
-                    context.getClaims().claim(USERNAME, mobilityUserDetails.getEmail());
-                    if (mobilityUserDetails.getOrganizationRegNumber() != null) {
-                        context.getClaims().claim(ORGANIZATION, mobilityUserDetails.getOrganizationRegNumber());
-                    }
-                    context.getClaims().claim(ROLES, mobilityUserDetails.getAuthorities().stream()
-                            .map(GrantedAuthority::getAuthority)
-                            .toList());
-                }
+            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
+                customizeAccessToken(context);
+            } else if (OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue())) {
+                customizeOpenIdToken(context);
             }
         };
     }
+
+    /// OPEN ID TOKEN /////
+    private void customizeAccessToken(JwtEncodingContext context){
+        if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
+
+            String username = context.getPrincipal().getName();
+
+            context.getClaims().claim(USERNAME, username);
+
+            Set<String> scopes = determineScopes(context);
+
+            context.getClaims().claim(ROLES, scopes);
+
+        } else if (AuthorizationGrantType.AUTHORIZATION_CODE.equals(context.getAuthorizationGrantType())) {
+
+            Authentication principal = context.getPrincipal();
+            Object principalObj = principal.getPrincipal();
+            if (principalObj instanceof MobilityUserDetails mobilityUserDetails) {
+                context.getClaims().claim(USERNAME, mobilityUserDetails.getEmail());
+                if (mobilityUserDetails.getOrganizationRegNumber() != null) {
+                    context.getClaims().claim(ORGANIZATION, mobilityUserDetails.getOrganizationRegNumber());
+                }
+                context.getClaims().claim(ROLES, mobilityUserDetails.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .toList());
+            }
+        }
+    }
+
+    private void customizeOpenIdToken(JwtEncodingContext context) {
+        Authentication principal = context.getPrincipal();
+        if (principal.getPrincipal() instanceof MobilityUserDetails user) {
+            context.getClaims().claim(StandardClaimNames.EMAIL, user.getEmail());
+            context.getClaims().claim(StandardClaimNames.EMAIL_VERIFIED, true);
+            context.getClaims().subject(user.getEmail());
+            if (user.getOrganizationRegNumber() != null) {
+                context.getClaims().claim(ORGANIZATION, user.getOrganizationRegNumber());
+            }
+        }
+    }
+    /// ////
 
     private Set<String> determineScopes(JwtEncodingContext context) {
         Object scopeClaim = context.getClaims().build().getClaim("scope");
@@ -344,6 +396,27 @@ public class ProjectSecurityConfig {
                 .requireRole("user.AuthServerAccountManagement/ManageUserAccount", RoleType.INTERNAL_SERVICE)
                 .requireRole("user.AuthServerRoleManagement/AddRole", RoleType.INTERNAL_SERVICE)
                 .build();
+    }
+
+    ///  CORS ////
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(@Value("${cors.allowed-origins}") List<String> allowedOrigins) {
+
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(allowedOrigins);
+        config.setAllowedMethods(List.of("GET", "POST"));
+        config.setAllowedHeaders(List.of(
+                HttpHeaders.AUTHORIZATION,
+                HttpHeaders.CONTENT_TYPE,
+                "X-XSRF-TOKEN"
+        ));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 
 }
