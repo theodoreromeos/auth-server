@@ -25,7 +25,6 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.authentication.password.CompromisedPasswordChecker;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -67,7 +66,6 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -82,7 +80,6 @@ public class ProjectSecurityConfig {
     private final TokenTtlProperties tokenTtlProperties;
     private final String issuerUrl;
 
-    private static final String USERNAME = "username";
     private static final String ROLES = "roles";
     private static final String ORGANIZATION = "organization";
 
@@ -311,13 +308,10 @@ public class ProjectSecurityConfig {
         };
     }
 
-    /// OPEN ID TOKEN /////
     private void customizeAccessToken(JwtEncodingContext context){
         if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
 
-            String username = context.getPrincipal().getName();
-
-            context.getClaims().claim(USERNAME, username);
+            context.getClaims().subject(context.getPrincipal().getName());
 
             Set<String> scopes = determineScopes(context);
 
@@ -328,7 +322,7 @@ public class ProjectSecurityConfig {
             Authentication principal = context.getPrincipal();
             Object principalObj = principal.getPrincipal();
             if (principalObj instanceof MobilityUserDetails mobilityUserDetails) {
-                context.getClaims().claim(USERNAME, mobilityUserDetails.getEmail());
+                context.getClaims().subject(mobilityUserDetails.getEmail());
                 if (mobilityUserDetails.getOrganizationRegNumber() != null) {
                     context.getClaims().claim(ORGANIZATION, mobilityUserDetails.getOrganizationRegNumber());
                 }
@@ -350,7 +344,6 @@ public class ProjectSecurityConfig {
             }
         }
     }
-    /// ////
 
     private Set<String> determineScopes(JwtEncodingContext context) {
         Object scopeClaim = context.getClaims().build().getClaim("scope");
@@ -397,8 +390,6 @@ public class ProjectSecurityConfig {
                 .requireRole("user.AuthServerRoleManagement/AddRole", RoleType.INTERNAL_SERVICE)
                 .build();
     }
-
-    ///  CORS ////
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource(@Value("${cors.allowed-origins}") List<String> allowedOrigins) {

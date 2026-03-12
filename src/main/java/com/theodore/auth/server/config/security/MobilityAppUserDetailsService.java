@@ -12,7 +12,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class MobilityAppUserDetailsService implements UserDetailsService {
@@ -27,7 +26,7 @@ public class MobilityAppUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         UserAuthInfo user = userAuthInfoRepository.findByEmailOrMobileNumberAllIgnoreCase(username, username)
                 .orElseThrow(() -> new UsernameNotFoundException("User " + username + " not found"));
-        if(Boolean.FALSE.equals(user.getEmailVerified())){
+        if (Boolean.FALSE.equals(user.getEmailVerified())) {
             throw new UnverifiedAccountException();
         }
         List<GrantedAuthority> authorities = getGrantedAuthorities(user);
@@ -38,8 +37,8 @@ public class MobilityAppUserDetailsService implements UserDetailsService {
     private List<GrantedAuthority> getGrantedAuthorities(UserAuthInfo user) {
         return user.getUserRoles().stream()
                 .filter(UserRoles::getActive)
-                .map(userRole -> new SimpleGrantedAuthority(userRole.getRole().getRoleType().name()))
-                .collect(Collectors.toList());
+                .map(userRole -> (GrantedAuthority) new SimpleGrantedAuthority(userRole.getRole().getRoleType().name()))
+                .toList();
     }
 
 }
