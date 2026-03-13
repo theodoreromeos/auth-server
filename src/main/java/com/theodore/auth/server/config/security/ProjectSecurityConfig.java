@@ -1,6 +1,7 @@
 package com.theodore.auth.server.config.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.KeyUse;
@@ -20,8 +21,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -64,8 +63,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -75,7 +72,6 @@ import java.util.stream.Collectors;
 @EnableConfigurationProperties({RsaKeyProperties.class, TokenTtlProperties.class})
 public class ProjectSecurityConfig {
 
-    private final ResourceLoader resourceLoader;
     private final RsaKeyProperties rsaKeyProperties;
     private final TokenTtlProperties tokenTtlProperties;
     private final String issuerUrl;
@@ -84,11 +80,9 @@ public class ProjectSecurityConfig {
     private static final String ORGANIZATION = "organization";
 
     public ProjectSecurityConfig(RsaKeyProperties rsaKeyProperties,
-                                 ResourceLoader resourceLoader,
                                  TokenTtlProperties tokenTtlProperties,
                                  @Value("${issuer.url}") String issuerUrl) {
         this.rsaKeyProperties = rsaKeyProperties;
-        this.resourceLoader = resourceLoader;
         this.tokenTtlProperties = tokenTtlProperties;
         this.issuerUrl = issuerUrl;
     }
@@ -109,6 +103,7 @@ public class ProjectSecurityConfig {
                         .requestMatchers("/login", "/login/**", "/error").permitAll()
                         .anyRequest().authenticated()
                 )
+                .cors(Customizer.withDefaults())
                 // Redirect to the login page when not authenticated from the authorization endpoint
                 .exceptionHandling(exceptions ->
                         exceptions.defaultAuthenticationEntryPointFor(
@@ -133,18 +128,19 @@ public class ProjectSecurityConfig {
         csrfRepo.setCookiePath("/auth");
         csrfRepo.setCookieName("XSRF-TOKEN");
 
-        http.authorizeHttpRequests(authorize -> authorize
+        http
+                .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/login",
                                 "/login/**",
                                 "/api/auth/login",
                                 "/assets/**",
-                                "/error",
-                                "/oauth2/**",
-                                "/.well-known/**").permitAll()
-                        .anyRequest().authenticated())
+                                "/error").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepo)
-                        .ignoringRequestMatchers("/login", "/api/auth/login")
+                        .ignoringRequestMatchers("/login", "/api/auth/login") //todo: check if this must go
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
@@ -267,21 +263,18 @@ public class ProjectSecurityConfig {
 
     @Bean
     public JWKSource<SecurityContext> jwkSource() {
-
-        Resource privateKeyRes = resourceLoader.getResource(rsaKeyProperties.privateKeyPath());
-        Resource publicKeyRes = resourceLoader.getResource(rsaKeyProperties.publicKeyPath());
-
-        RSAPrivateKey privateKey = RsaKeyUtils.loadPrivateKey(privateKeyRes);
-        RSAPublicKey publicKey = RsaKeyUtils.loadPublicKey(publicKeyRes);
-
-        RSAKey rsaKey = new RSAKey.Builder(publicKey)
-                .privateKey(privateKey)
-                .keyID(rsaKeyProperties.keyId())
-                .keyUse(KeyUse.SIGNATURE)       // /oauth2/jwks publishes keys with no declared algorithm or use, which breaks strict client-side JWK validation
-                .algorithm(JWSAlgorithm.RS256)  // and is non-compliant with RFC 7517.
-                .build();
-        JWKSet jwkSet = new JWKSet(rsaKey);
-        return new ImmutableJWKSet<>(jwkSet);
+        try {
+            RSAKey rsaKey = new RSAKey.Builder(rsaKeyProperties.publicKey())
+                    .privateKey(rsaKeyProperties.privateKey())
+                    .keyIDFromThumbprint()          // deterministic hash - JWK thumbprints are secure hashes for uniquely identifying key material. Their computation is specified in RFC 7638 - fodn inm https://connect2id.com/products/nimbus-jose-jwt/examples/jwk-thumbprints todo:read it more
+                    .keyUse(KeyUse.SIGNATURE)       // /oauth2/jwks publishes keys with no declared algorithm or use, which breaks strict client-side JWK validation
+                    .algorithm(JWSAlgorithm.RS256)  // and is non-compliant with RFC 7517.
+                    .build();
+            JWKSet jwkSet = new JWKSet(rsaKey);
+            return new ImmutableJWKSet<>(jwkSet);
+        } catch (JOSEException ex) {
+            throw new IllegalStateException("Failed to compute JWK thumbprint for RSA key", ex);
+        }
     }
 
     @Bean
@@ -308,7 +301,7 @@ public class ProjectSecurityConfig {
         };
     }
 
-    private void customizeAccessToken(JwtEncodingContext context){
+    private void customizeAccessToken(JwtEncodingContext context) {
         if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
 
             context.getClaims().subject(context.getPrincipal().getName());
@@ -396,7 +389,7 @@ public class ProjectSecurityConfig {
 
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(allowedOrigins);
-        config.setAllowedMethods(List.of("GET", "POST"));
+        config.setAllowedMethods(List.of("GET", "POST", "OPTIONS")); // added options for browser preflights todo:verify usability
         config.setAllowedHeaders(List.of(
                 HttpHeaders.AUTHORIZATION,
                 HttpHeaders.CONTENT_TYPE,
