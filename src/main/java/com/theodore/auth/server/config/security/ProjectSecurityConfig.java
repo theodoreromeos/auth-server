@@ -21,6 +21,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -114,19 +116,14 @@ public class ProjectSecurityConfig {
                 .sessionManagement(session -> session
                         .sessionFixation().changeSessionId()
                         .maximumSessions(1)
-                )
-                .csrf(csrf ->
-                        csrf.ignoringRequestMatchers("/oauth2/token", "/oauth2/introspect", "/oauth2/revoke"));
+                );
 
         return http.build();
     }
 
     @Bean
     @Order(2)
-    SecurityFilterChain appSecurityFilterChain(HttpSecurity http) throws Exception {
-        var csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
-        csrfRepo.setCookiePath("/auth");
-        csrfRepo.setCookieName("XSRF-TOKEN");
+    public SecurityFilterChain appSecurityFilterChain(HttpSecurity http, CookieCsrfTokenRepository csrfRepo) throws Exception {
 
         http
                 .authorizeHttpRequests(authorize -> authorize
@@ -140,7 +137,7 @@ public class ProjectSecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepo)
-                        .ignoringRequestMatchers("/login", "/api/auth/login") //todo: check if this must go
+                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
@@ -162,6 +159,22 @@ public class ProjectSecurityConfig {
                         .maxSessionsPreventsLogin(false)
                 );
         return http.build();
+    }
+
+    @Bean
+    public CookieCsrfTokenRepository createCookieCsrfTokenRepository(Environment environment) {
+        var csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        csrfRepo.setCookiePath("/auth");
+        csrfRepo.setCookieName("XSRF-TOKEN");
+
+        if (!environment.matchesProfiles("local")) {
+            csrfRepo.setCookieCustomizer(cookie -> cookie
+                    .secure(true)
+                    .sameSite("Lax")
+            );
+        }
+
+        return csrfRepo;
     }
 
     @Bean
@@ -266,7 +279,7 @@ public class ProjectSecurityConfig {
         try {
             RSAKey rsaKey = new RSAKey.Builder(rsaKeyProperties.publicKey())
                     .privateKey(rsaKeyProperties.privateKey())
-                    .keyIDFromThumbprint()          // deterministic hash - JWK thumbprints are secure hashes for uniquely identifying key material. Their computation is specified in RFC 7638 - fodn inm https://connect2id.com/products/nimbus-jose-jwt/examples/jwk-thumbprints todo:read it more
+                    .keyIDFromThumbprint()
                     .keyUse(KeyUse.SIGNATURE)       // /oauth2/jwks publishes keys with no declared algorithm or use, which breaks strict client-side JWK validation
                     .algorithm(JWSAlgorithm.RS256)  // and is non-compliant with RFC 7517.
                     .build();
