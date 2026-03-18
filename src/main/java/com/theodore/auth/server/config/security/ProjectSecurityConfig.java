@@ -12,7 +12,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.theodore.auth.server.models.RsaKeyProperties;
 import com.theodore.auth.server.models.TokenTtlProperties;
 import com.theodore.auth.server.utils.MobilityUserDetailsMixIn;
-import com.theodore.infrastructure.common.entities.modeltypes.RoleType;
+import com.theodore.infrastructure.common.entities.enums.RoleType;
 import jakarta.servlet.http.HttpServletResponse;
 import net.devh.boot.grpc.server.serverfactory.GrpcServerConfigurer;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,7 +22,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -137,7 +136,8 @@ public class ProjectSecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepo)
-                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()) //todo: remove it when spring boot 4
+                        .ignoringRequestMatchers("/api/auth/login") //todo: remove it
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
@@ -192,6 +192,7 @@ public class ProjectSecurityConfig {
     @Bean
     public OAuth2AuthorizationService authorizationService(
             JdbcTemplate jdbcTemplate, RegisteredClientRepository clientRepo) {
+
         JdbcOAuth2AuthorizationService service =
                 new JdbcOAuth2AuthorizationService(jdbcTemplate, clientRepo);
 
@@ -328,7 +329,7 @@ public class ProjectSecurityConfig {
             Authentication principal = context.getPrincipal();
             Object principalObj = principal.getPrincipal();
             if (principalObj instanceof MobilityUserDetails mobilityUserDetails) {
-                context.getClaims().subject(mobilityUserDetails.getEmail());
+                context.getClaims().subject(mobilityUserDetails.getAuthUserId());
                 if (mobilityUserDetails.getOrganizationRegNumber() != null) {
                     context.getClaims().claim(ORGANIZATION, mobilityUserDetails.getOrganizationRegNumber());
                 }
@@ -344,7 +345,7 @@ public class ProjectSecurityConfig {
         if (principal.getPrincipal() instanceof MobilityUserDetails user) {
             context.getClaims().claim(StandardClaimNames.EMAIL, user.getEmail());
             context.getClaims().claim(StandardClaimNames.EMAIL_VERIFIED, true);
-            context.getClaims().subject(user.getEmail());
+            context.getClaims().subject(user.getAuthUserId());
             if (user.getOrganizationRegNumber() != null) {
                 context.getClaims().claim(ORGANIZATION, user.getOrganizationRegNumber());
             }

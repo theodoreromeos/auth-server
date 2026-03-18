@@ -1,7 +1,12 @@
 package com.theodore.auth.server.repositories;
 
 import com.theodore.auth.server.entities.UserRoles;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface UserRolesRepository extends CrudRepository<UserRoles, Long> {
+import java.util.List;
+
+public interface UserRolesRepository extends JpaRepository<UserRoles, Long> {
+
+    List<UserRoles> findByUser_Id(String id);
+
 }

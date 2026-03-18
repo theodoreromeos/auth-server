@@ -2,6 +2,7 @@ package com.theodore.auth.server.services;
 
 import com.theodore.queue.common.authserver.CredentialsRollbackEventDto;
 import com.theodore.infrastructure.common.exceptions.RollbackProcessingException;
+import com.theodore.queue.common.authserver.RolesRollbackEventDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -18,14 +19,25 @@ public class UserManagementListener {
         this.userAuthService = userAuthService;
     }
 
-    @RabbitListener(queues = "${credentials.rollback.queue}")
+    @RabbitListener(queues = "${rollback.queue.credentials}")
     public void receive(CredentialsRollbackEventDto message) {
-        LOGGER.info("Received rollback request");
+        LOGGER.info("Received credentials rollback request");
         try {
             userAuthService.rollbackRegistration(message.userId());
         } catch (Exception e) {
             LOGGER.error("Failed to rollback user registration for userId={}", message.userId(), e);
             throw new RollbackProcessingException("Failed to rollback registration for userId=" + message.userId(), e);
+        }
+    }
+
+    @RabbitListener(queues = "${rollback.queue.roles}")
+    public void receive(RolesRollbackEventDto message) {
+        LOGGER.info("Received roles assignment rollback request");
+        try {
+            userAuthService.removeUserRoles(message);
+        } catch (Exception e) {
+            LOGGER.error("Failed to rollback roles assignment to user with id={}", message.userId(), e);
+            throw new RollbackProcessingException("Failed to rollback roles assignment to user with id=" + message.userId(), e);
         }
     }
 

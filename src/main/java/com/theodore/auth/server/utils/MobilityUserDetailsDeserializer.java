@@ -18,6 +18,7 @@ public class MobilityUserDetailsDeserializer extends JsonDeserializer<MobilityUs
     private static final String EMAIL = "email";
     private static final String PASSWORD = "password";
     private static final String ORG_REG_NUMBER = "organizationRegNumber";
+    private static final String AUTH_USER_ID = "authUserId";
 
     private static final String ENABLED = "enabled";
     private static final String ACCOUNT_NON_EXPIRED = "accountNonExpired";
@@ -45,7 +46,10 @@ public class MobilityUserDetailsDeserializer extends JsonDeserializer<MobilityUs
 
         var authorities = parseAuthorities(root.path(AUTHORITIES));
 
+        var authUserId = root.path(AUTH_USER_ID).asText();
+
         return new MobilityUserDetails(
+                authUserId,
                 email,
                 password,
                 enabled,
