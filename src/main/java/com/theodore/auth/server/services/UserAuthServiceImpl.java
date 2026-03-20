@@ -24,10 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 public class UserAuthServiceImpl implements UserAuthService {
@@ -208,7 +206,7 @@ public class UserAuthServiceImpl implements UserAuthService {
 
         var allUserRoles = userRolesRepository.findByUser_Id(request.userId());
 
-        if(CollectionUtils.isEmpty(allUserRoles)){
+        if (CollectionUtils.isEmpty(allUserRoles)) {
             throw new NotFoundException(CommonErrorMessages.USER_NOT_FOUND);
         }
         List<UserRoles> rolesToRemove = allUserRoles.stream()
