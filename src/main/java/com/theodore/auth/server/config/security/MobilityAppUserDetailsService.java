@@ -29,9 +29,7 @@ public class MobilityAppUserDetailsService implements UserDetailsService {
         if (Boolean.FALSE.equals(user.getEmailVerified())) {
             throw new UnverifiedAccountException();
         }
-        List<GrantedAuthority> authorities = getGrantedAuthorities(user);
-
-        return new MobilityUserDetails(user, authorities);
+        return new MobilityUserDetails(user, getGrantedAuthorities(user));
     }
 
     private List<GrantedAuthority> getGrantedAuthorities(UserAuthInfo user) {

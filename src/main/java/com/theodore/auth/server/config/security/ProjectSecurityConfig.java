@@ -21,7 +21,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -162,18 +161,9 @@ public class ProjectSecurityConfig {
     }
 
     @Bean
-    public CookieCsrfTokenRepository createCookieCsrfTokenRepository(Environment environment) {
+    public CookieCsrfTokenRepository createCookieCsrfTokenRepository() {
         var csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
-        csrfRepo.setCookiePath("/auth");
         csrfRepo.setCookieName("XSRF-TOKEN");
-
-        if (!environment.matchesProfiles("local")) {
-            csrfRepo.setCookieCustomizer(cookie -> cookie
-                    .secure(true)
-                    .sameSite("Lax")
-            );
-        }
-
         return csrfRepo;
     }
 
@@ -256,7 +246,7 @@ public class ProjectSecurityConfig {
                 .clientId("mobility-public")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)//todo: maybe remove it
                 .redirectUri(redirectUri)
                 .postLogoutRedirectUri(logoutUri)
                 .scopes(s -> {
@@ -268,8 +258,8 @@ public class ProjectSecurityConfig {
                         .build())
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(tokenTtlProperties.pkceAccess())
-                        .refreshTokenTimeToLive(tokenTtlProperties.pkceRefresh())
-                        .reuseRefreshTokens(false)
+                        .refreshTokenTimeToLive(tokenTtlProperties.pkceRefresh())//todo: maybe remove it
+                        .reuseRefreshTokens(false)//todo: maybe remove it
                         .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
                         .build())
                 .build();
@@ -304,9 +294,6 @@ public class ProjectSecurityConfig {
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
         return context -> {
-            String clientId = context.getRegisteredClient().getClientId();
-            context.getClaims().audience(List.of(issuerUrl, clientId));
-
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
                 customizeAccessToken(context);
             } else if (OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue())) {
@@ -316,6 +303,7 @@ public class ProjectSecurityConfig {
     }
 
     private void customizeAccessToken(JwtEncodingContext context) {
+        context.getClaims().audience(List.of(context.getRegisteredClient().getClientId())); //todo change that and see what should be the correct thing to put in the audience
         if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
 
             context.getClaims().subject(context.getPrincipal().getName());
@@ -342,9 +330,10 @@ public class ProjectSecurityConfig {
 
     private void customizeOpenIdToken(JwtEncodingContext context) {
         Authentication principal = context.getPrincipal();
+        context.getClaims().audience(List.of(context.getRegisteredClient().getClientId()));
         if (principal.getPrincipal() instanceof MobilityUserDetails user) {
             context.getClaims().claim(StandardClaimNames.EMAIL, user.getEmail());
-            context.getClaims().claim(StandardClaimNames.EMAIL_VERIFIED, true);
+            context.getClaims().claim(StandardClaimNames.EMAIL_VERIFIED, true);//todo: have the actual value of the email verified here
             context.getClaims().subject(user.getAuthUserId());
             if (user.getOrganizationRegNumber() != null) {
                 context.getClaims().claim(ORGANIZATION, user.getOrganizationRegNumber());
@@ -377,11 +366,6 @@ public class ProjectSecurityConfig {
     @Bean("emailJwtSigningKey")
     public SecretKey emailJwtSigningKey(@Value("${jwt.signing.secret.key}") String secret) {
         return new SecretKeySpec(Base64.getDecoder().decode(secret), "HmacSHA256");
-    }
-
-    @Bean("emailTokenValiditySeconds")
-    public long emailTokenValiditySeconds(@Value("${app.email-token-lifetime-seconds:86400}") long ttl) {
-        return ttl;
     }
 
     @Bean
