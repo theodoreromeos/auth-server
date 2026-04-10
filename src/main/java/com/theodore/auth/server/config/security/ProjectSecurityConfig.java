@@ -9,6 +9,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.theodore.auth.server.models.AudienceProperties;
 import com.theodore.auth.server.models.RsaKeyProperties;
 import com.theodore.auth.server.models.TokenTtlProperties;
 import com.theodore.auth.server.utils.MobilityUserDetailsMixIn;
@@ -33,13 +34,13 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.jackson2.SecurityJackson2Modules;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.*;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.core.oidc.StandardClaimNames;
 import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.*;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientCredentialsAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
@@ -69,7 +70,7 @@ import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties({RsaKeyProperties.class, TokenTtlProperties.class})
+@EnableConfigurationProperties({RsaKeyProperties.class, TokenTtlProperties.class, AudienceProperties.class})
 public class ProjectSecurityConfig {
 
     private final RsaKeyProperties rsaKeyProperties;
@@ -78,6 +79,7 @@ public class ProjectSecurityConfig {
 
     private static final String ROLES = "roles";
     private static final String ORGANIZATION = "organization";
+    private static final String RESOURCE = "resource";
 
     public ProjectSecurityConfig(RsaKeyProperties rsaKeyProperties,
                                  TokenTtlProperties tokenTtlProperties,
@@ -292,18 +294,17 @@ public class ProjectSecurityConfig {
     }
 
     @Bean
-    public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
+    public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(AudienceProperties audienceProps) {
         return context -> {
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
-                customizeAccessToken(context);
+                customizeAccessToken(context, audienceProps);
             } else if (OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue())) {
                 customizeOpenIdToken(context);
             }
         };
     }
 
-    private void customizeAccessToken(JwtEncodingContext context) {
-        context.getClaims().audience(List.of(context.getRegisteredClient().getClientId())); //todo change that and see what should be the correct thing to put in the audience
+    private void customizeAccessToken(JwtEncodingContext context, AudienceProperties audienceProps) {
         if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
 
             context.getClaims().subject(context.getPrincipal().getName());
@@ -311,6 +312,8 @@ public class ProjectSecurityConfig {
             Set<String> scopes = determineScopes(context);
 
             context.getClaims().claim(ROLES, scopes);
+
+            setAudienceClaim(context, audienceProps);
 
         } else if (AuthorizationGrantType.AUTHORIZATION_CODE.equals(context.getAuthorizationGrantType())) {
 
@@ -325,6 +328,7 @@ public class ProjectSecurityConfig {
                         .map(GrantedAuthority::getAuthority)
                         .toList());
             }
+            context.getClaims().audience(List.of(audienceProps.mobilityPublicApi()));
         }
     }
 
@@ -351,6 +355,35 @@ public class ProjectSecurityConfig {
                     .collect(Collectors.toUnmodifiableSet());
             default -> Set.of();
         };
+    }
+
+    private void setAudienceClaim(JwtEncodingContext context, AudienceProperties audienceProps) {
+        String clientId = context.getRegisteredClient().getClientId();
+        String targetResource = getTargetResource(context);
+
+        if (!audienceProps.isAllowed(clientId, targetResource)) {
+            throw new OAuth2AuthenticationException(new OAuth2Error(
+                    OAuth2ErrorCodes.INVALID_CLIENT,
+                    "Client %s is not permitted to target resource %s".formatted(clientId, targetResource),
+                    null));
+        }
+
+        context.getClaims().audience(List.of(targetResource));
+    }
+
+    private String getTargetResource(JwtEncodingContext context) {
+        OAuth2ClientCredentialsAuthenticationToken grant = context.getAuthorizationGrant();
+
+        Map<String, Object> additionalParams = grant.getAdditionalParameters();
+        Object resourceParam = additionalParams.get(RESOURCE);
+
+        if (resourceParam == null || resourceParam.toString().isBlank()) {
+            throw new OAuth2AuthenticationException(new OAuth2Error(
+                    OAuth2ErrorCodes.INVALID_REQUEST,
+                    "The resource parameter is required for client_credentials grants",
+                    null));
+        }
+        return resourceParam.toString();
     }
 
     @Bean
