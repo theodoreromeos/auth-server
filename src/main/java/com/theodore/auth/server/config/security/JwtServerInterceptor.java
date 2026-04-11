@@ -1,6 +1,6 @@
 package com.theodore.auth.server.config.security;
 
-import com.theodore.infrastructure.common.entities.modeltypes.RoleType;
+import com.theodore.infrastructure.common.entities.enums.RoleType;
 import io.grpc.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,21 +41,22 @@ public class JwtServerInterceptor implements ServerInterceptor {
         String token = authHeader.substring(7);
         try {
             Jwt jwt = jwtDecoder.decode(token);
-            List<String> scopes = jwt.getClaimAsStringList("scope");
+            List<String> roles = jwt.getClaimAsStringList("roles");
 
-            if (!hasRequiredScope(methodName, scopes)) {
-                return closeCallWithError(call, Status.PERMISSION_DENIED, "scope missing");
+            if (!hasRequiredScope(methodName, roles)) {
+                return closeCallWithError(call, Status.PERMISSION_DENIED, "Roles Missing");
             }
 
             return Contexts.interceptCall(Context.current(), call, headers, next);
 
         } catch (JwtException e) {
+            LOGGER.warn("JWT validation failed for method {}: {}", methodName, e.getMessage());
             return closeCallWithError(call, Status.UNAUTHENTICATED, "jwt error");
         }
     }
 
     private <ReqT, RespT> ServerCall.Listener<ReqT> closeCallWithError(ServerCall<ReqT, RespT> call, Status status, String logMessage) {
-        LOGGER.error(logMessage);
+        LOGGER.warn(logMessage);
         call.close(status, new Metadata());
         return new ServerCall.Listener<>() {
         };

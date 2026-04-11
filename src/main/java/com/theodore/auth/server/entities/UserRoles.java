@@ -66,4 +66,5 @@ public class UserRoles extends AuditableUpdateEntity {
     public void setActive(Boolean active) {
         this.active = active;
     }
+
 }
