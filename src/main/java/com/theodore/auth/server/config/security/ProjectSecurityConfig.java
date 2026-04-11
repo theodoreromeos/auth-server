@@ -244,7 +244,7 @@ public class ProjectSecurityConfig {
                 .clientId("mobility-public")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)//todo: maybe remove it
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri(redirectUri)
                 .postLogoutRedirectUri(logoutUri)
                 .scopes(s -> {
@@ -256,8 +256,8 @@ public class ProjectSecurityConfig {
                         .build())
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(tokenTtlProperties.pkceAccess())
-                        .refreshTokenTimeToLive(tokenTtlProperties.pkceRefresh())//todo: maybe remove it
-                        .reuseRefreshTokens(false)//todo: maybe remove it
+                        .refreshTokenTimeToLive(tokenTtlProperties.pkceRefresh())
+                        .reuseRefreshTokens(false)
                         .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
                         .build())
                 .build();
@@ -427,7 +427,7 @@ public class ProjectSecurityConfig {
 
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(allowedOrigins);
-        config.setAllowedMethods(List.of("GET", "POST", "OPTIONS")); // added options for browser preflights todo:verify usability
+        config.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
         config.setAllowedHeaders(List.of(
                 HttpHeaders.AUTHORIZATION,
                 HttpHeaders.CONTENT_TYPE,
