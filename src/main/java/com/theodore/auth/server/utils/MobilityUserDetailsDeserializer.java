@@ -68,7 +68,13 @@ public class MobilityUserDetailsDeserializer extends JsonDeserializer<MobilityUs
 
     private static boolean extractBoolean(JsonNode node, String field) {
         var value = node.path(field);
-        return value.isMissingNode() || value.isNull() || value.asBoolean(true);
+        if (value.isMissingNode() || value.isNull()) {
+            return true;
+        }
+        if (!value.isBoolean()) {
+            throw new IllegalStateException("Expected boolean for field " + field + " but got: " + value.getNodeType());
+        }
+        return value.asBoolean();
     }
 
     private static List<GrantedAuthority> parseAuthorities(JsonNode authoritiesNode) {

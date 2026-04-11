@@ -38,7 +38,7 @@ import org.springframework.security.oauth2.core.*;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.core.oidc.StandardClaimNames;
 import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.server.authorization.*;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientCredentialsAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
@@ -112,10 +112,6 @@ public class ProjectSecurityConfig {
                                 new LoginUrlAuthenticationEntryPoint("/login"),
                                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
                         )
-                )
-                .sessionManagement(session -> session
-                        .sessionFixation().changeSessionId()
-                        .maximumSessions(1)
                 );
 
         return http.build();
@@ -126,10 +122,10 @@ public class ProjectSecurityConfig {
     public SecurityFilterChain appSecurityFilterChain(HttpSecurity http, CookieCsrfTokenRepository csrfRepo) throws Exception {
 
         http
+                .securityMatcher("/**")
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/login",
                                 "/login/**",
-                                "/api/auth/login",
                                 "/assets/**",
                                 "/error").permitAll()
                         .anyRequest().authenticated()
@@ -284,8 +280,19 @@ public class ProjectSecurityConfig {
     }
 
     @Bean
-    public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
-        return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
+    public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource,
+                                 @Value("${grpc.expected-audience}") String expectedAudience) {
+
+        NimbusJwtDecoder decoder = (NimbusJwtDecoder) OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
+
+        OAuth2TokenValidator<Jwt> audienceValidator = new JwtClaimValidator<List<String>>(
+                JwtClaimNames.AUD, aud -> aud != null && aud.contains(expectedAudience));
+
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(issuerUrl),
+                audienceValidator));
+
+        return decoder;
     }
 
     @Bean
