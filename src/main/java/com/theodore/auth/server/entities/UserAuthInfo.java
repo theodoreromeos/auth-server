@@ -45,7 +45,7 @@ public class UserAuthInfo extends AuditableUpdateEntity {
     private Boolean mfaEnabled = false;
 
     @Column(name = "failed_login_attempts", nullable = false)
-    private int failedLoginAttempts = 0;
+    private Integer failedLoginAttempts = 0;
 
     @Column(name = "lock_expiry")
     private Instant lockExpiry;
@@ -142,11 +142,11 @@ public class UserAuthInfo extends AuditableUpdateEntity {
         this.mfaEnabled = mfaEnabled;
     }
 
-    public int getFailedLoginAttempts() {
+    public Integer getFailedLoginAttempts() {
         return failedLoginAttempts;
     }
 
-    public void setFailedLoginAttempts(int failedLoginAttempts) {
+    public void setFailedLoginAttempts(Integer failedLoginAttempts) {
         this.failedLoginAttempts = failedLoginAttempts;
     }
 

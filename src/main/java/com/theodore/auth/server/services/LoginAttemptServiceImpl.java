@@ -1,23 +1,25 @@
 package com.theodore.auth.server.services;
 
 import com.theodore.auth.server.entities.UserAuthInfo;
+import com.theodore.auth.server.models.LoginAttemptsProperties;
 import com.theodore.auth.server.repositories.UserAuthInfoRepository;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.Instant;
 
 @Service
+@EnableConfigurationProperties(LoginAttemptsProperties.class)
 public class LoginAttemptServiceImpl implements LoginAttemptService {
 
-    private static final int MAX_ATTEMPTS = 5;
-    private static final Duration LOCKOUT_DURATION = Duration.ofMinutes(2);
-
     private final UserAuthInfoRepository userAuthInfoRepository;
+    private final LoginAttemptsProperties loginAttemptsProperties;
 
-    public LoginAttemptServiceImpl(UserAuthInfoRepository userAuthInfoRepository) {
+    public LoginAttemptServiceImpl(UserAuthInfoRepository userAuthInfoRepository,
+                                   LoginAttemptsProperties loginAttemptsProperties) {
         this.userAuthInfoRepository = userAuthInfoRepository;
+        this.loginAttemptsProperties = loginAttemptsProperties;
     }
 
     @Transactional
@@ -25,10 +27,10 @@ public class LoginAttemptServiceImpl implements LoginAttemptService {
     public void recordFailure(String username) {
         userAuthInfoRepository.findByEmailOrMobileNumberAllIgnoreCase(username, username)
                 .ifPresent(user -> {
-                    int attempts = user.getFailedLoginAttempts() + 1;
+                    Integer attempts = user.getFailedLoginAttempts() + 1;
                     user.setFailedLoginAttempts(attempts);
-                    if (attempts >= MAX_ATTEMPTS) {
-                        user.setLockExpiry(Instant.now().plus(LOCKOUT_DURATION));
+                    if (attempts >= loginAttemptsProperties.maxAttempts()) {
+                        user.setLockExpiry(Instant.now().plus(loginAttemptsProperties.lockDuration()));
                     }
                     userAuthInfoRepository.save(user);
                 });
