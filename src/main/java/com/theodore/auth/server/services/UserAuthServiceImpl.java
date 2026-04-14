@@ -15,12 +15,12 @@ import com.theodore.infrastructure.common.exceptions.UserAlreadyExistsException;
 import com.theodore.infrastructure.common.utils.MobilityUtils;
 import com.theodore.queue.common.authserver.RolesRollbackEventDto;
 import com.theodore.user.*;
-import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.HashSet;
