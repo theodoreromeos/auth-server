@@ -10,9 +10,11 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.theodore.auth.server.models.AudienceProperties;
+import com.theodore.auth.server.models.CsrfCookieProperties;
 import com.theodore.auth.server.models.RsaKeyProperties;
 import com.theodore.auth.server.models.TokenTtlProperties;
 import com.theodore.auth.server.utils.MobilityUserDetailsMixIn;
+import com.theodore.auth.server.utils.PermissionsPolicy;
 import com.theodore.infrastructure.common.entities.enums.RoleType;
 import jakarta.servlet.http.HttpServletResponse;
 import net.devh.boot.grpc.server.serverfactory.GrpcServerConfigurer;
@@ -57,6 +59,10 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.password.HaveIBeenPwnedRestApiPasswordChecker;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy;
+import org.springframework.security.web.header.writers.CrossOriginResourcePolicyHeaderWriter.CrossOriginResourcePolicy;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -64,13 +70,14 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties({RsaKeyProperties.class, TokenTtlProperties.class, AudienceProperties.class})
+@EnableConfigurationProperties({RsaKeyProperties.class, TokenTtlProperties.class, AudienceProperties.class, CsrfCookieProperties.class})
 public class ProjectSecurityConfig {
 
     private final RsaKeyProperties rsaKeyProperties;
@@ -112,6 +119,20 @@ public class ProjectSecurityConfig {
                                 new LoginUrlAuthenticationEntryPoint("/login"),
                                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
                         )
+                )
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'none'; " +
+                                        "frame-ancestors 'none'; " +
+                                        "form-action 'self'; " +
+                                        "base-uri 'none'"))
+                        .referrerPolicy(ref -> ref.policy(ReferrerPolicy.NO_REFERRER))
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .preload(true)
+                                .maxAgeInSeconds(31536000))
+                        .permissionsPolicyHeader(permissions -> permissions.policy(
+                                PermissionsPolicy.buildPermissionsPolicy()))
                 );
 
         return http.build();
@@ -133,7 +154,7 @@ public class ProjectSecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepo)
-                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()) //todo: remove it when spring boot 4
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                         .ignoringRequestMatchers("/api/auth/login") //todo: remove it
                 )
                 .formLogin(form -> form
@@ -142,11 +163,13 @@ public class ProjectSecurityConfig {
                         .successHandler((request, response, authentication) -> {
                             response.setStatus(HttpServletResponse.SC_OK);
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
                             response.getWriter().write("{\"status\":\"success\"}");
                         })
                         .failureHandler((request, response, exception) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
                             response.getWriter().write("{\"status\":\"failed\"}");
                         })
                         .permitAll())
@@ -154,14 +177,41 @@ public class ProjectSecurityConfig {
                         .sessionFixation().changeSessionId()
                         .maximumSessions(5)
                         .maxSessionsPreventsLogin(false)
+                )
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'self'; " +
+                                        "script-src 'self'; " +
+                                        "style-src 'self'; " +
+                                        "img-src 'self' data:; " +
+                                        "font-src 'self'; " +
+                                        "connect-src 'self'; " +
+                                        "frame-ancestors 'none'; " +
+                                        "form-action 'self'; " +
+                                        "base-uri 'self'; " +
+                                        "object-src 'none'"))
+                        .referrerPolicy(ref -> ref.policy(ReferrerPolicy.NO_REFERRER))
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .preload(true)
+                                .maxAgeInSeconds(31536000))
+                        .permissionsPolicyHeader(permissions -> permissions.policy(
+                                PermissionsPolicy.buildPermissionsPolicy()))
+                        .crossOriginOpenerPolicy(coop -> coop.policy(
+                                CrossOriginOpenerPolicy.SAME_ORIGIN))
+                        .crossOriginResourcePolicy(corp -> corp.policy(
+                                CrossOriginResourcePolicy.SAME_ORIGIN))
                 );
         return http.build();
     }
 
     @Bean
-    public CookieCsrfTokenRepository createCookieCsrfTokenRepository() {
+    public CookieCsrfTokenRepository createCookieCsrfTokenRepository(CsrfCookieProperties properties) {
         var csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
-        csrfRepo.setCookieName("XSRF-TOKEN");
+        csrfRepo.setCookieCustomizer(cookie -> cookie
+                .sameSite(properties.sameSite())
+                .secure(properties.secure())
+        );
         return csrfRepo;
     }
 
