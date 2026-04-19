@@ -7,20 +7,24 @@ import com.theodore.auth.server.exceptions.RoleAlreadyAssignedException;
 import com.theodore.auth.server.repositories.RoleRepository;
 import com.theodore.auth.server.repositories.UserAuthInfoRepository;
 import com.theodore.auth.server.repositories.UserRolesRepository;
-import com.theodore.infrastructure.common.entities.modeltypes.RoleType;
+import com.theodore.infrastructure.common.entities.enums.RoleType;
+import com.theodore.infrastructure.common.exceptions.CommonErrorMessages;
 import com.theodore.infrastructure.common.exceptions.NotFoundException;
+import com.theodore.infrastructure.common.exceptions.RollbackProcessingException;
 import com.theodore.infrastructure.common.exceptions.UserAlreadyExistsException;
 import com.theodore.infrastructure.common.utils.MobilityUtils;
+import com.theodore.queue.common.authserver.RolesRollbackEventDto;
 import com.theodore.user.*;
-import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -86,7 +90,7 @@ public class UserAuthServiceImpl implements UserAuthService {
         RoleType roleType = RoleType.valueOf(newUserRequest.getRole());
 
         Role role = roleRepository.findByRoleTypeAndActiveTrue(roleType)
-                .orElseThrow(() -> new NotFoundException("Role not found"));
+                .orElseThrow(() -> new NotFoundException(CommonErrorMessages.ROLE_NOT_FOUND));
 
         UserRoles userRole = new UserRoles(savedUser, role);
         userRolesRepository.save(userRole);
@@ -101,13 +105,13 @@ public class UserAuthServiceImpl implements UserAuthService {
     public UserConfirmationResponse confirmRegistration(ConfirmUserAccountRequest accountConfirmationRequest) {
 
         UserAuthInfo user = userAuthInfoRepository.findById(accountConfirmationRequest.getUserId())
-                .orElseThrow(() -> new NotFoundException("User not found"));
+                .orElseThrow(() -> new NotFoundException(CommonErrorMessages.USER_NOT_FOUND));
 
         user.setEmailVerified(true);
 
         if (CollectionUtils.isEmpty(user.getUserRoles())) {
             Role role = roleRepository.findByRoleTypeAndActiveTrue(RoleType.SIMPLE_USER)
-                    .orElseThrow(() -> new NotFoundException("Role not found"));
+                    .orElseThrow(() -> new NotFoundException(CommonErrorMessages.ROLE_NOT_FOUND));
 
             UserRoles userRole = new UserRoles(user, role);
             userRolesRepository.save(userRole);
@@ -126,7 +130,7 @@ public class UserAuthServiceImpl implements UserAuthService {
     public UserConfirmationResponse confirmOrganizationAdminRegistration(ConfirmAdminAccountRequest request) {
 
         UserAuthInfo user = userAuthInfoRepository.findById(request.getUserId())
-                .orElseThrow(() -> new NotFoundException("User not found"));
+                .orElseThrow(() -> new NotFoundException(CommonErrorMessages.USER_NOT_FOUND));
 
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             throw new IllegalArgumentException("Old password is incorrect");
@@ -142,7 +146,7 @@ public class UserAuthServiceImpl implements UserAuthService {
     @Transactional
     @Override
     public void rollbackRegistration(String userId) {
-        var user = userAuthInfoRepository.findById(userId).orElseThrow(() -> new NotFoundException("user not found"));
+        var user = userAuthInfoRepository.findById(userId).orElseThrow(() -> new NotFoundException(CommonErrorMessages.USER_NOT_FOUND));
         if (!CollectionUtils.isEmpty(user.getUserRoles())) {
             userRolesRepository.deleteAll(user.getUserRoles());
         }
@@ -151,9 +155,12 @@ public class UserAuthServiceImpl implements UserAuthService {
 
     @Transactional
     @Override
-    public AuthUserIdResponse manageAuthUserAccount(ManageAuthUserAccountRequest manageUserAccountRequest) {
-        UserAuthInfo user = userAuthInfoRepository.findByEmailOrMobileNumberAllIgnoreCase(manageUserAccountRequest.getOldEmail(),
-                manageUserAccountRequest.getMobileNumber()).orElseThrow(() -> new NotFoundException("user not found"));
+    public void manageAuthUserAccount(ManageAuthUserAccountRequest manageUserAccountRequest) {
+        UserAuthInfo user = userAuthInfoRepository.findByIdAndEmailIgnoreCaseOrMobileNumber(
+                manageUserAccountRequest.getUserId(),
+                manageUserAccountRequest.getOldEmail(),
+                manageUserAccountRequest.getMobileNumber()
+        ).orElseThrow(() -> new NotFoundException(CommonErrorMessages.USER_NOT_FOUND));
         if (!passwordEncoder.matches(manageUserAccountRequest.getOldPassword(), user.getPassword())) {
             throw new BadCredentialsException("Passwords do not match");
         }
@@ -161,10 +168,6 @@ public class UserAuthServiceImpl implements UserAuthService {
         user.setPassword(passwordEncoder.encode(manageUserAccountRequest.getNewPassword()));
         user.setEmail(MobilityUtils.normalizeEmail(manageUserAccountRequest.getNewEmail()));
         userAuthInfoRepository.save(user);
-
-        return AuthUserIdResponse.newBuilder()
-                .setUserId(user.getId())
-                .build();
     }
 
     @Override
@@ -183,17 +186,39 @@ public class UserAuthServiceImpl implements UserAuthService {
         return OrgAdminIdAndEmailResponse.newBuilder().addAllOrganizationAdminInfo(adminIdAndEmailList).build();
     }
 
+    @Transactional
     @Override
     public void addUserRole(AddRoleRequest request) {
-        var user = userAuthInfoRepository.findById(request.getUserId()).orElseThrow(() -> new NotFoundException("User not found"));
+        var user = userAuthInfoRepository.findById(request.getUserId()).orElseThrow(() -> new NotFoundException(CommonErrorMessages.USER_NOT_FOUND));
         RoleType roleType = RoleType.fromString(request.getRole());
         checkValidityOfAddingRoleToUser(user, roleType);
         UserRoles newUserRole = new UserRoles();
         newUserRole.setUser(user);
         newUserRole.setActive(true);
-        Role role = roleRepository.findByRoleTypeAndActiveTrue(roleType).orElseThrow(() -> new NotFoundException("Role not found"));
+        Role role = roleRepository.findByRoleTypeAndActiveTrue(roleType).orElseThrow(() -> new NotFoundException(CommonErrorMessages.ROLE_NOT_FOUND));
         newUserRole.setRole(role);
         userRolesRepository.save(newUserRole);
+    }
+
+    @Transactional
+    @Override
+    public void removeUserRoles(RolesRollbackEventDto request) {
+
+        var allUserRoles = userRolesRepository.findByUser_Id(request.userId());
+
+        if (CollectionUtils.isEmpty(allUserRoles)) {
+            throw new NotFoundException(CommonErrorMessages.USER_NOT_FOUND);
+        }
+        List<UserRoles> rolesToRemove = allUserRoles.stream()
+                .filter(ur -> request.rolesToBeRemoved().contains(ur.getRole().getRoleType()))
+                .toList();
+
+        if (rolesToRemove.isEmpty()) {
+            return;
+        }
+        validateRoleRemoval(request.userId(), allUserRoles.size(), rolesToRemove.size());
+
+        userRolesRepository.deleteAllInBatch(rolesToRemove);
     }
 
     private void checkValidityOfAddingRoleToUser(UserAuthInfo user, RoleType roleType) {
@@ -204,4 +229,11 @@ public class UserAuthServiceImpl implements UserAuthService {
             throw new NotFoundException("User roles not found");
         }
     }
+
+    private void validateRoleRemoval(String userId, int currentRoleCount, int rolesToRemoveCount) {
+        if (rolesToRemoveCount >= currentRoleCount) {
+            throw new RollbackProcessingException("Cannot remove all roles from user with id: " + userId);
+        }
+    }
+
 }

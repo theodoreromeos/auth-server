@@ -1,5 +1,6 @@
 package com.theodore.auth.server.services;
 
+import com.theodore.queue.common.authserver.RolesRollbackEventDto;
 import com.theodore.user.*;
 
 public interface UserAuthService {
@@ -44,7 +45,7 @@ public interface UserAuthService {
      *
      * @param manageUserAccountRequest request that can change email, password and phone number of an account
      */
-    AuthUserIdResponse manageAuthUserAccount(ManageAuthUserAccountRequest manageUserAccountRequest);
+    void manageAuthUserAccount(ManageAuthUserAccountRequest manageUserAccountRequest);
 
     /**
      * Fetches all email and ids of the admins of an organization
@@ -53,6 +54,18 @@ public interface UserAuthService {
      */
     OrgAdminIdAndEmailResponse getOrganizationAdminInfo(String orgRegistrationNumber);
 
+    /**
+     * Adds a role to a user
+     *
+     * @param request The request contains the user id and the role that will be added
+     */
     void addUserRole(AddRoleRequest request);
+
+    /**
+     * Remove the assigned roles from a user
+     *
+     * @param request The request contains the user id and the list of roles that will be removed
+     */
+    void removeUserRoles(RolesRollbackEventDto request);
 
 }

@@ -5,9 +5,15 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <include file="/db/changelog/changes/1-initialization-schema.xml"/>
-    <include file="/db/changelog/changes/2-role-initializations.xml"/>
-    <include file="/db/changelog/changes/3-create-oauth2-tables.xml"/>
-    <include file="/db/changelog/changes/4-add-lock-after-failed-logins.xml"/>
+    <changeSet id="4" author="theodoreromeos">
+        <sql>
+
+            ALTER TABLE user_auth_info
+                ADD COLUMN last_login_ip VARCHAR(45),
+                ADD COLUMN failed_login_attempts INT NOT NULL DEFAULT 0,
+                ADD COLUMN lock_expiry TIMESTAMP NULL;
+
+        </sql>
+    </changeSet>
 
 </databaseChangeLog>

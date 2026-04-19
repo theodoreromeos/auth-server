@@ -35,11 +35,20 @@ public class UserAuthInfo extends AuditableUpdateEntity {
     @Column(name = "last_login")
     private Instant lastLogin;
 
+    @Column(name = "last_login_ip", length = 45)
+    private String lastLoginIp;
+
     @Column(name = "email_verified")
     private Boolean emailVerified = false;
 
     @Column(name = "mfa_enabled")
     private Boolean mfaEnabled = false;
+
+    @Column(name = "failed_login_attempts", nullable = false)
+    private Integer failedLoginAttempts = 0;
+
+    @Column(name = "lock_expiry")
+    private Instant lockExpiry;
 
     @OneToMany(mappedBy = "user", fetch = FetchType.EAGER)
     @JsonIgnore
@@ -109,6 +118,14 @@ public class UserAuthInfo extends AuditableUpdateEntity {
         this.lastLogin = lastLogin;
     }
 
+    public String getLastLoginIp() {
+        return lastLoginIp;
+    }
+
+    public void setLastLoginIp(String lastLoginIp) {
+        this.lastLoginIp = lastLoginIp;
+    }
+
     public Boolean getEmailVerified() {
         return emailVerified;
     }
@@ -123,6 +140,22 @@ public class UserAuthInfo extends AuditableUpdateEntity {
 
     public void setMfaEnabled(Boolean mfaEnabled) {
         this.mfaEnabled = mfaEnabled;
+    }
+
+    public Integer getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public void setFailedLoginAttempts(Integer failedLoginAttempts) {
+        this.failedLoginAttempts = failedLoginAttempts;
+    }
+
+    public Instant getLockExpiry() {
+        return lockExpiry;
+    }
+
+    public void setLockExpiry(Instant lockExpiry) {
+        this.lockExpiry = lockExpiry;
     }
 
     public Set<UserRoles> getUserRoles() {

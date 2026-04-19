@@ -4,6 +4,7 @@ import com.theodore.auth.server.entities.UserAuthInfo;
 import com.theodore.auth.server.entities.UserRoles;
 import com.theodore.auth.server.exceptions.UnverifiedAccountException;
 import com.theodore.auth.server.repositories.UserAuthInfoRepository;
+import com.theodore.auth.server.services.LoginAttemptService;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -12,34 +13,36 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class MobilityAppUserDetailsService implements UserDetailsService {
 
     private final UserAuthInfoRepository userAuthInfoRepository;
+    private final LoginAttemptService loginAttemptService;
 
-    public MobilityAppUserDetailsService(UserAuthInfoRepository userAuthInfoRepository) {
+    public MobilityAppUserDetailsService(UserAuthInfoRepository userAuthInfoRepository,
+                                         LoginAttemptService loginAttemptService) {
         this.userAuthInfoRepository = userAuthInfoRepository;
+        this.loginAttemptService = loginAttemptService;
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         UserAuthInfo user = userAuthInfoRepository.findByEmailOrMobileNumberAllIgnoreCase(username, username)
                 .orElseThrow(() -> new UsernameNotFoundException("User " + username + " not found"));
-        if(Boolean.FALSE.equals(user.getEmailVerified())){
+
+        if (Boolean.FALSE.equals(user.getEmailVerified())) {
             throw new UnverifiedAccountException();
         }
-        List<GrantedAuthority> authorities = getGrantedAuthorities(user);
-
-        return new MobilityUserDetails(user, authorities);
+        boolean accountNonLocked = !loginAttemptService.isLocked(user);
+        return new MobilityUserDetails(user, accountNonLocked, getGrantedAuthorities(user));
     }
 
     private List<GrantedAuthority> getGrantedAuthorities(UserAuthInfo user) {
         return user.getUserRoles().stream()
                 .filter(UserRoles::getActive)
-                .map(userRole -> new SimpleGrantedAuthority(userRole.getRole().getRoleType().name()))
-                .collect(Collectors.toList());
+                .map(userRole -> (GrantedAuthority) new SimpleGrantedAuthority(userRole.getRole().getRoleType().name()))
+                .toList();
     }
 
 }
