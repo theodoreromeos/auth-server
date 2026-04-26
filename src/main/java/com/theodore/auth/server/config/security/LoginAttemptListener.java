@@ -39,10 +39,7 @@ public class LoginAttemptListener {
     }
 
     private String extractIp(Authentication auth) {
-        System.out.println("getting the ip y'all");
         if (auth.getDetails() instanceof WebAuthenticationDetails details) {
-            System.out.println("222222");
-            System.out.println("THE IP IS : "+details.getRemoteAddress());
             return details.getRemoteAddress();
         }
         return null;
