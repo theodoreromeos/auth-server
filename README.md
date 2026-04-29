@@ -80,71 +80,6 @@ A scheduled cleanup task purges expired authorizations to prevent unbounded tabl
 
 ---
 
-## Getting Started
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/theodoreromeos/auth-server.git
-cd /mobility-authserver
-```
-
-### 2. Start the Database
-
-```bash
-docker compose up -d
-```
-
-> The Docker Compose file provisions a PostgreSQL instance dedicated to the auth server. 
-> Liquibase migrations run automatically on application startup, including the OAuth 2.1 authorization tables.
-
-### 3. Token Signing Configuration
-
-Generate an RSA key pair for JWT signing:
-
-```bash
-# Generate private key
-openssl genrsa -out private.pem 2048
-
-# Extract public key
-openssl rsa -in private.pem -pubout -out public.pem
-```
-Configure the key paths in your application properties:
-
-```properties
-rsa.private-key-path=classpath:keys/private.pem
-rsa.public-key-path=classpath:keys/public.pem
-rsa.key-id=<<key-id>>
-```
-
-### 3. Configure the Application
-
-Select a profile to run the application (local, staging, prod).
-
-```properties
-oauth2.client.mobility-api.secret=<<client-secret>>
-oauth2.redirect.uri=<<redirect-uri>>
-oauth2.redirect.logout.uri=<<post-logout-redirect-uri>>
-issuer.url=<<issuer-url>>
-jwt.signing.secret.key=<<email-token-signing-key>>
-```
-
-
-### 4. Build & Run
-
-```bash
-# Build
-mvn clean package -DskipTests
-
-# Run
-java -jar target/mobility-authserver-1.0.0.jar --spring.profiles.active=local
-```
-
-The server will start on the default HTTP port with the gRPC server listening on 
-its configured port.
-
----
-
 ## OAuth 2.1 Clients
 
 The auth server registers two OAuth clients on startup if they don't already exist. 
@@ -248,8 +183,7 @@ The application uses a custom `logback-spring.xml` configuration supporting
 Spring profile specific log levels and output formatting.
 
 ```
-src/main/resources/
-└── logback-spring.xml
+src/main/resources/logback-spring.xml
 ```
 
 ---
@@ -270,20 +204,74 @@ registry before building.
 ---
 
 
-## Docker
+## Running the Service
 
-A unified Docker Compose setup is planned to orchestrate both the database 
-and the service:
+### Full Stack (recommended)
+
+All four microservices, databases, and infrastructure are managed from the
+[mobility-app](https://github.com/mobility-systems/mobility-app) repository:
 
 ```bash
-# Coming soon: single command to start everything
+git clone https://github.com/mobility-systems/mobility-app.git
+cd mobility-app
 docker compose up -d
 ```
 
-> **Current state:** The provided `docker-compose.yml` starts only the PostgreSQL database. 
-> Service containerization is in progress.
+### Standalone Development
 
-> [!CAUTION] 
-> **Make sure all required infrastructure services (PostgreSQL, RabbitMQ) 
+> [!WARNING]
+> **Make sure all required infrastructure services (PostgreSQL, RabbitMQ)
 > are available before starting.**
 
+#### 1. Start the Database
+
+```bash
+docker compose up -d
+```
+
+> The Docker Compose file within this repository provisions a PostgreSQL
+> instance dedicated to the Auth Server. Liquibase migrations run
+> automatically on application startup, including the OAuth 2.1
+> authorization tables.
+
+#### 2. Token Signing Configuration
+
+Generate an RSA key pair for JWT signing:
+
+```bash
+openssl genrsa -out private.pem 2048
+openssl rsa -in private.pem -pubout -out public.pem
+```
+
+Configure the key paths in your application properties:
+
+```properties
+rsa.private-key-path=classpath:keys/private.pem
+rsa.public-key-path=classpath:keys/public.pem
+rsa.key-id=<>
+```
+
+#### 3. Configure the Application
+
+Select a profile (local, staging, prod) and set the required properties:
+
+```properties
+oauth2.client.mobility-api.secret=<>
+oauth2.redirect.uri=<>
+oauth2.redirect.logout.uri=<>
+issuer.url=<>
+jwt.signing.secret.key=<>
+```
+
+#### 4. Build & Run
+
+```bash
+mvn clean package -Plocal -DskipTests
+java -jar target/mobility-authserver-1.0.0.jar
+```
+
+Or with Maven directly:
+
+```bash
+mvn spring-boot:run -Plocal
+```

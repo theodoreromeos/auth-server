@@ -23,7 +23,7 @@
         <grpc.spring.boot.version>3.1.0.RELEASE</grpc.spring.boot.version>
         <grpc.java.version>1.78.0</grpc.java.version>
         <!--   Theodore versions     -->
-        <mobility-common.version>0.0.6</mobility-common.version>
+        <mobility-common.version>0.0.7</mobility-common.version>
     </properties>
 
     <dependencyManagement>
@@ -35,17 +35,31 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>com.theodore.common</groupId>
+                <artifactId>infrastructure-common</artifactId>
+                <version>${mobility-common.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.theodore.common</groupId>
+                <artifactId>proto-common</artifactId>
+                <version>${mobility-common.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.theodore.common</groupId>
+                <artifactId>rabbitmq-common</artifactId>
+                <version>${mobility-common.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
         <!--   SPRING SERVER DEPENDENCIES     -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -74,12 +88,14 @@
         <dependency>
             <groupId>com.theodore.common</groupId>
             <artifactId>proto-common</artifactId>
-            <version>${mobility-common.version}</version>
         </dependency>
         <dependency>
             <groupId>com.theodore.common</groupId>
             <artifactId>rabbitmq-common</artifactId>
-            <version>${mobility-common.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.theodore.common</groupId>
+            <artifactId>infrastructure-common</artifactId>
         </dependency>
 
         <!--    VALIDATION    -->
@@ -106,6 +122,12 @@
             <scope>test</scope>
         </dependency>
 
+        <!--    GENERAL    -->
+        <dependency>
+            <groupId>com.github.f4b6a3</groupId>
+            <artifactId>ulid-creator</artifactId>
+        </dependency>
+
         <!--   TESTING     -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -130,6 +152,11 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>rabbitmq</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
